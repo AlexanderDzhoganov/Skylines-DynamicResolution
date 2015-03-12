@@ -1,7 +1,4 @@
-﻿using System;
-using ColossalFramework;
-using ColossalFramework.UI;
-using ICities;
+﻿using ICities;
 using UnityEngine;
 
 namespace DynamicResolution
@@ -27,18 +24,11 @@ namespace DynamicResolution
 
         public override void OnLevelLoaded(LoadMode mode)
         {
-            //Debugger.Initialize();
-            Debugger.Log("* debugger initialized");
-
-            var cameras = GameObject.FindObjectsOfType<Camera>();
-            foreach (var cam in cameras)
-            {
-                Debugger.Log(String.Format("Camera - {0} - depth: {1} - pixelrect: {2}", cam.name, cam.depth, cam.pixelRect));
-            }
+            Debugger.Initialize();
+            Debugger.Log("initialized");
 
             var cameraController = GameObject.FindObjectOfType<CameraController>();
             var camera = cameraController.gameObject.GetComponent<Camera>();
-          
             camera.gameObject.AddComponent<CameraHook>();
         }
 

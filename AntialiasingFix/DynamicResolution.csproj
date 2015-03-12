@@ -48,8 +48,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Config.cs" />
-    <Compile Include="DebugConsole.cs" />
     <Compile Include="CameraHook.cs" />
+    <Compile Include="DebugConsole.cs" />
     <Compile Include="DummyHook.cs" />
     <Compile Include="Mod.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

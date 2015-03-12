@@ -1,5 +1,6 @@
 ﻿using System;
 using System.CodeDom;
+using System.Xml.Schema;
 using DynamicResolution;
 using UnityEngine;
 
@@ -19,6 +20,7 @@ public class CameraHook : MonoBehaviour
     public Rect cameraPixelRect;
 
     private GameObject dummyGameObject;
+    private DummyHook dummyHook;
 
     private Camera undergroundCamera;
 
@@ -48,7 +50,7 @@ public class CameraHook : MonoBehaviour
         }
 
         ssaaFactor = config.ssaaFactor;
-
+        currentSSAAFactor = ssaaFactor;
         SaveConfig();
     }
 
@@ -57,8 +59,6 @@ public class CameraHook : MonoBehaviour
         config.ssaaFactor = userSSAAFactor;
         Configuration.Serialize(configPath, config);
     }
-
-    private bool inGameAA = true;
 
     public void SetInGameAA(bool state)
     {
@@ -69,8 +69,6 @@ public class CameraHook : MonoBehaviour
             {
                 Destroy(camera.gameObject.GetComponent<SMAA>());
             }
-
-            inGameAA = false;
         }
         else
         {
@@ -78,8 +76,6 @@ public class CameraHook : MonoBehaviour
             {
                 camera.gameObject.AddComponent<SMAA>();
             }
-
-            inGameAA = true;
         }
     }
 
@@ -98,6 +94,14 @@ public class CameraHook : MonoBehaviour
         currentSSAAFactor = factor;
     }
 
+    public void OnPreCull()
+    {
+    }
+
+    public void OnPostRender()
+    {
+    }
+
     public void Update()
     {
         if (!initialized)
@@ -107,6 +111,7 @@ public class CameraHook : MonoBehaviour
             var camera = gameObject.GetComponent<Camera>();
             cameraPixelRect = camera.pixelRect;
             camera.depth = -100;
+            camera.enabled = false;
 
             var width = Screen.width*ssaaFactor;
             var height = Screen.height*ssaaFactor;
@@ -119,15 +124,14 @@ public class CameraHook : MonoBehaviour
             dummy.tag = "MainCamera";
             dummy.pixelRect = cameraPixelRect;
 
-            var hook = dummyGameObject.AddComponent<DummyHook>();
-            hook.rt = rt;
-            hook.mainCamera = camera;
-            hook.mainCamera.tag = "Player";
-            hook.hook = this;
+            dummyHook = dummyGameObject.AddComponent<DummyHook>();
+            dummyHook.rt = rt;
+            dummyHook.mainCamera = camera;
+            //hook.mainCamera.tag = "Player";
+            dummyHook.hook = this;
 
-            var rect = hook.mainCamera.rect;
-            hook.mainCamera.targetTexture = rt;
-            hook.mainCamera.rect = rect;
+            dummyHook.mainCamera.targetTexture = null;
+            dummyHook.mainCamera.pixelRect = cameraPixelRect;
 
             var underground = FindObjectOfType<UndergroundView>();
             undergroundCamera = underground.gameObject.GetComponent<Camera>();

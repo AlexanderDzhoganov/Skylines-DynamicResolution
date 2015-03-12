@@ -25,6 +25,10 @@ namespace DynamicResolution
                 return;
             }
 
+            mainCamera.targetTexture = rt;
+            mainCamera.Render();
+            mainCamera.targetTexture = null;
+
             float factor = hook.GetSSAAFactor();
 
             if (factor > 1.0f)
