@@ -52,6 +52,7 @@
     <Compile Include="DebugConsole.cs" />
     <Compile Include="DummyHook.cs" />
     <Compile Include="Mod.cs" />
+    <Compile Include="OverlayEffectCustom.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Util.cs" />
   </ItemGroup>

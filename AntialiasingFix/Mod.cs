@@ -25,9 +25,6 @@ namespace DynamicResolution
 
         public override void OnLevelLoaded(LoadMode mode)
         {
-          //  Debugger.Initialize();
-          //  Debugger.Log("initialized");
-
             var cameraController = GameObject.FindObjectOfType<CameraController>();
             var camera = cameraController.gameObject.GetComponent<Camera>();
             camera.gameObject.AddComponent<CameraHook>();

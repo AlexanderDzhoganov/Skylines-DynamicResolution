@@ -1,7 +1,5 @@
 ﻿using System;
-using System.CodeDom;
-using System.Runtime.InteropServices;
-using System.Xml.Schema;
+using ColossalFramework;
 using DynamicResolution;
 using UnityEngine;
 
@@ -26,11 +24,12 @@ public class CameraHook : MonoBehaviour
     private Camera undergroundCamera;
 
     public bool showConfigWindow = false;
-    private Rect windowRect = new Rect(64, 64, 350, 160);
+    private Rect windowRect = new Rect(64, 64, 350, 170);
 
     private static readonly string configPath = "DynamicResolutionConfig.xml";
 
-    private Configuration config;
+    public Configuration config;
+    public CameraController cameraController;
     
     public float GetSSAAFactor()
     {
@@ -54,6 +53,8 @@ public class CameraHook : MonoBehaviour
         userSSAAFactor = ssaaFactor;
         currentSSAAFactor = ssaaFactor;
         SaveConfig();
+
+        cameraController = FindObjectOfType<CameraController>();
     }
 
     public void SaveConfig()
@@ -98,14 +99,6 @@ public class CameraHook : MonoBehaviour
         currentSSAAFactor = factor;
     }
 
-    public void OnPreCull()
-    {
-    }
-
-    public void OnPostRender()
-    {
-    }
-
     public void Initialize()
     {
         SetInGameAA(false);
@@ -147,7 +140,7 @@ public class CameraHook : MonoBehaviour
         SaveConfig();
     }
 
-    public void Update()
+    void Update()
     {
         if (!initialized)
         {
@@ -172,7 +165,7 @@ public class CameraHook : MonoBehaviour
                 resetFactor = false;
             }
         }
-
+        
         if (Input.GetKey(KeyCode.RightControl) && Input.GetKeyDown(KeyCode.F10))
         {
             if (ssaaFactor == 1.0f)
@@ -188,7 +181,7 @@ public class CameraHook : MonoBehaviour
         }
         else if (Input.GetKeyDown(KeyCode.F10))
         {
-                showConfigWindow = !showConfigWindow;
+            showConfigWindow = !showConfigWindow;
         }
     }
 
@@ -248,6 +241,7 @@ public class CameraHook : MonoBehaviour
 
         GUILayout.Label(String.Format("{0} %", (int)(ssaaFactor * 100.0f)));
         GUILayout.EndHorizontal();
+
         GUILayout.Label("FPS: " + 1.0f / Time.deltaTime);
         GUILayout.Label("dT: " + Time.deltaTime.ToString("0.000"));
 

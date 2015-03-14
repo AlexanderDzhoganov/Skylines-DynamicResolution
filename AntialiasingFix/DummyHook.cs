@@ -1,4 +1,5 @@
-﻿using System.Security.Policy;
+﻿using System.Reflection;
+using System.Security.Policy;
 using UnityEngine;
 
 namespace DynamicResolution
@@ -19,11 +20,15 @@ namespace DynamicResolution
 
         public CameraHook hook;
 
+        private TiltShiftEffect tiltShift;
+
         public void Awake()
         {
             camera = GetComponent<Camera>();
             downsampleShader = new Material(downsampleShaderSource);
             downsampleX2Shader = new Material(downsampleX2ShaderSource);
+
+            tiltShift = FindObjectOfType<TiltShiftEffect>();
         }
 
         public void OnRenderImage(RenderTexture src, RenderTexture dst)
@@ -32,6 +37,9 @@ namespace DynamicResolution
             {
                 return;
             }
+
+            tiltShift.m_BlurArea *= hook.currentSSAAFactor;
+            tiltShift.m_MaxBlurSize *= hook.currentSSAAFactor;
 
             mainCamera.targetTexture = rt;
             mainCamera.Render();
@@ -58,16 +66,6 @@ namespace DynamicResolution
             {
                 Graphics.Blit(rt, dst);
             }
-        }
-
-        public void Update()
-        {
-            camera.fieldOfView = mainCamera.fieldOfView;
-            camera.nearClipPlane = mainCamera.nearClipPlane;
-            camera.farClipPlane = mainCamera.farClipPlane;
-            camera.transform.position = mainCamera.transform.position;
-            camera.transform.rotation = mainCamera.transform.rotation;
-            camera.rect = mainCamera.rect;
         }
 
         private readonly string downsampleX2ShaderSource = @"// Compiled shader for all platforms, uncompressed size: 11.4KB
