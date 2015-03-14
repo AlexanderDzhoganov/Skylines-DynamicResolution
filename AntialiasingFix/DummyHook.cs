@@ -6,6 +6,10 @@ namespace DynamicResolution
     {
 
         public RenderTexture rt;
+        public RenderTexture rt2;
+
+        public RenderTexture tempRT;
+
         public Camera mainCamera;
         public Camera camera;
 
@@ -18,6 +22,8 @@ namespace DynamicResolution
             downsampleShader = new Material(downsampleShaderSource);
         }
 
+        private static bool once = false;
+
         public void OnRenderImage(RenderTexture src, RenderTexture dst)
         {
             if (rt == null)
@@ -28,18 +34,22 @@ namespace DynamicResolution
             mainCamera.targetTexture = rt;
             mainCamera.Render();
             mainCamera.targetTexture = null;
-
+            
             float factor = hook.GetSSAAFactor();
 
-            if (factor > 1.0f)
+            if (factor != 1.0f)
             {
                 float psx = 1.0f / (float)rt.width;
                 float psy = 1.0f / (float)rt.height;
 
-                downsampleShader.SetFloat("_PixelSizeX", psx);
-                downsampleShader.SetFloat("_PixelSizeY", psy);
+                Vector4 resampleOffset = new Vector4(psx, 0.0f, 0.0f, 0.0f);
+                downsampleShader.SetVector("_ResampleOffset", resampleOffset);
 
-                Graphics.Blit(rt, dst, downsampleShader);
+                Graphics.Blit(rt, rt2, downsampleShader);
+
+                resampleOffset = new Vector4(0.0f, psy, 0.0f, 0.0f);
+                downsampleShader.SetVector("_ResampleOffset", resampleOffset);
+                Graphics.Blit(rt2, dst, downsampleShader);
             }
             else
             {
@@ -58,15 +68,14 @@ namespace DynamicResolution
         }
 
 
-        private readonly string downsampleShaderSource = @"// Compiled shader for all platforms, uncompressed size: 20.8KB
+        private readonly string downsampleShaderSource = @"// Compiled shader for all platforms, uncompressed size: 19.6KB
 
 // Skipping shader variants that would not be included into build of current scene.
 
-Shader ""Unlit/Texture"" {
+Shader ""LancsozResample"" {
 Properties {
  _MainTex (""Base (RGB)"", 2D) = ""white"" { }
- _PixelSizeX (""PixelSizeX"", Float) = 0
- _PixelSizeY (""PixelSizeY"", Float) = 0
+ _ResampleOffset (""_ResampleOffset"", Vector) = (0,0,0,0)
 }
 SubShader { 
  LOD 100
@@ -77,21 +86,21 @@ SubShader {
  //       d3d11 : 5 math
  //    d3d11_9x : 5 math
  //        d3d9 : 5 math
- //        gles : 24 math, 9 texture
- //       gles3 : 24 math, 9 texture
+ //        gles : 33 math, 9 texture
+ //       gles3 : 33 math, 9 texture
  //       metal : 3 math
- //      opengl : 24 math, 9 texture
+ //      opengl : 33 math, 9 texture
  // Stats for Fragment shader:
- //       d3d11 : 16 math, 9 texture
- //    d3d11_9x : 16 math, 9 texture
- //        d3d9 : 30 math, 9 texture
- //       metal : 24 math, 9 texture
+ //       d3d11 : 15 math, 9 texture
+ //    d3d11_9x : 15 math, 9 texture
+ //        d3d9 : 21 math, 9 texture
+ //       metal : 33 math, 9 texture
  Pass {
   Tags { ""RenderType""=""Opaque"" }
-  GpuProgramID 37689
+  GpuProgramID 11936
 Program ""vp"" {
 SubProgram ""opengl "" {
-// Stats: 24 math, 9 textures
+// Stats: 33 math, 9 textures
 ""!!GLSL
 #ifdef VERTEX
 
@@ -107,49 +116,30 @@ void main ()
 #endif
 #ifdef FRAGMENT
 uniform sampler2D _MainTex;
-uniform float _PixelSizeX;
-uniform float _PixelSizeY;
+uniform vec2 _ResampleOffset;
 varying vec2 xlv_TEXCOORD0;
 void main ()
 {
   vec4 col_1;
-  vec2 tmpvar_2;
-  tmpvar_2.y = 0.0;
-  tmpvar_2.x = _PixelSizeX;
-  vec2 tmpvar_3;
-  tmpvar_3.y = 0.0;
-  float cse_4;
-  cse_4 = -(_PixelSizeX);
-  tmpvar_3.x = cse_4;
-  vec2 tmpvar_5;
-  tmpvar_5.x = 0.0;
-  tmpvar_5.y = _PixelSizeY;
-  vec2 tmpvar_6;
-  tmpvar_6.x = 0.0;
-  float cse_7;
-  cse_7 = -(_PixelSizeY);
-  tmpvar_6.y = cse_7;
-  vec2 tmpvar_8;
-  tmpvar_8.x = _PixelSizeX;
-  tmpvar_8.y = _PixelSizeY;
-  vec2 tmpvar_9;
-  tmpvar_9.x = cse_4;
-  tmpvar_9.y = cse_7;
-  vec2 tmpvar_10;
-  tmpvar_10.x = cse_4;
-  tmpvar_10.y = _PixelSizeY;
-  vec2 tmpvar_11;
-  tmpvar_11.x = _PixelSizeX;
-  tmpvar_11.y = cse_7;
+  vec2 cse_2;
+  cse_2 = -(_ResampleOffset);
   col_1.xyz = (((
     ((((
-      ((texture2D (_MainTex, xlv_TEXCOORD0) + texture2D (_MainTex, (xlv_TEXCOORD0 + tmpvar_2))) + texture2D (_MainTex, (xlv_TEXCOORD0 + tmpvar_3)))
-     + texture2D (_MainTex, 
-      (xlv_TEXCOORD0 + tmpvar_5)
-    )) + texture2D (_MainTex, (xlv_TEXCOORD0 + tmpvar_6))) + texture2D (_MainTex, (xlv_TEXCOORD0 + tmpvar_8))) + texture2D (_MainTex, (xlv_TEXCOORD0 + tmpvar_9)))
-   + texture2D (_MainTex, 
-    (xlv_TEXCOORD0 + tmpvar_10)
-  )) + texture2D (_MainTex, (xlv_TEXCOORD0 + tmpvar_11))) / 9.0).xyz;
+      ((texture2D (_MainTex, xlv_TEXCOORD0) * 0.38026) + (texture2D (_MainTex, (xlv_TEXCOORD0 + cse_2)) * 0.27667))
+     + 
+      (texture2D (_MainTex, (xlv_TEXCOORD0 + _ResampleOffset)) * 0.27667)
+    ) + (texture2D (_MainTex, 
+      (xlv_TEXCOORD0 + (2.0 * cse_2))
+    ) * 0.08074)) + (texture2D (_MainTex, (xlv_TEXCOORD0 + 
+      (2.0 * _ResampleOffset)
+    )) * 0.08074)) + (texture2D (_MainTex, (xlv_TEXCOORD0 + (3.0 * cse_2))) * -0.02612))
+   + 
+    (texture2D (_MainTex, (xlv_TEXCOORD0 + (3.0 * _ResampleOffset))) * -0.02612)
+  ) + (texture2D (_MainTex, 
+    (xlv_TEXCOORD0 + (4.0 * cse_2))
+  ) * -0.02143)) + (texture2D (_MainTex, (xlv_TEXCOORD0 + 
+    (4.0 * _ResampleOffset)
+  )) * -0.02143)).xyz;
   col_1.w = 1.0;
   gl_FragData[0] = col_1;
 }
@@ -205,7 +195,7 @@ dccabaaaabaaaaaaegbabaaaabaaaaaaegiacaaaaaaaaaaaahaaaaaaogikcaaa
 aaaaaaaaahaaaaaadoaaaaab""
 }
 SubProgram ""gles "" {
-// Stats: 24 math, 9 textures
+// Stats: 33 math, 9 textures
 ""!!GLES
 
 
@@ -232,61 +222,38 @@ void main ()
 #ifdef FRAGMENT
 
 uniform sampler2D _MainTex;
-uniform highp float _PixelSizeX;
-uniform highp float _PixelSizeY;
+uniform highp vec2 _ResampleOffset;
 varying mediump vec2 xlv_TEXCOORD0;
 void main ()
 {
   lowp vec4 col_1;
-  highp vec2 tmpvar_2;
-  tmpvar_2.y = 0.0;
-  tmpvar_2.x = _PixelSizeX;
-  highp vec2 P_3;
-  P_3 = (xlv_TEXCOORD0 + tmpvar_2);
-  highp vec2 tmpvar_4;
-  tmpvar_4.y = 0.0;
-  highp float cse_5;
-  cse_5 = -(_PixelSizeX);
-  tmpvar_4.x = cse_5;
+  highp vec2 P_2;
+  highp vec2 cse_3;
+  cse_3 = -(_ResampleOffset);
+  P_2 = (xlv_TEXCOORD0 + cse_3);
+  highp vec2 P_4;
+  P_4 = (xlv_TEXCOORD0 + _ResampleOffset);
+  highp vec2 P_5;
+  P_5 = (xlv_TEXCOORD0 + (2.0 * cse_3));
   highp vec2 P_6;
-  P_6 = (xlv_TEXCOORD0 + tmpvar_4);
-  highp vec2 tmpvar_7;
-  tmpvar_7.x = 0.0;
-  tmpvar_7.y = _PixelSizeY;
+  P_6 = (xlv_TEXCOORD0 + (2.0 * _ResampleOffset));
+  highp vec2 P_7;
+  P_7 = (xlv_TEXCOORD0 + (3.0 * cse_3));
   highp vec2 P_8;
-  P_8 = (xlv_TEXCOORD0 + tmpvar_7);
-  highp vec2 tmpvar_9;
-  tmpvar_9.x = 0.0;
-  highp float cse_10;
-  cse_10 = -(_PixelSizeY);
-  tmpvar_9.y = cse_10;
-  highp vec2 P_11;
-  P_11 = (xlv_TEXCOORD0 + tmpvar_9);
-  highp vec2 tmpvar_12;
-  tmpvar_12.x = _PixelSizeX;
-  tmpvar_12.y = _PixelSizeY;
-  highp vec2 P_13;
-  P_13 = (xlv_TEXCOORD0 + tmpvar_12);
-  highp vec2 tmpvar_14;
-  tmpvar_14.x = cse_5;
-  tmpvar_14.y = cse_10;
-  highp vec2 P_15;
-  P_15 = (xlv_TEXCOORD0 + tmpvar_14);
-  highp vec2 tmpvar_16;
-  tmpvar_16.x = cse_5;
-  tmpvar_16.y = _PixelSizeY;
-  highp vec2 P_17;
-  P_17 = (xlv_TEXCOORD0 + tmpvar_16);
-  highp vec2 tmpvar_18;
-  tmpvar_18.x = _PixelSizeX;
-  tmpvar_18.y = cse_10;
-  highp vec2 P_19;
-  P_19 = (xlv_TEXCOORD0 + tmpvar_18);
+  P_8 = (xlv_TEXCOORD0 + (3.0 * _ResampleOffset));
+  highp vec2 P_9;
+  P_9 = (xlv_TEXCOORD0 + (4.0 * cse_3));
+  highp vec2 P_10;
+  P_10 = (xlv_TEXCOORD0 + (4.0 * _ResampleOffset));
   col_1.xyz = (((
     ((((
-      ((texture2D (_MainTex, xlv_TEXCOORD0) + texture2D (_MainTex, P_3)) + texture2D (_MainTex, P_6))
-     + texture2D (_MainTex, P_8)) + texture2D (_MainTex, P_11)) + texture2D (_MainTex, P_13)) + texture2D (_MainTex, P_15))
-   + texture2D (_MainTex, P_17)) + texture2D (_MainTex, P_19)) / 9.0).xyz;
+      ((texture2D (_MainTex, xlv_TEXCOORD0) * 0.38026) + (texture2D (_MainTex, P_2) * 0.27667))
+     + 
+      (texture2D (_MainTex, P_4) * 0.27667)
+    ) + (texture2D (_MainTex, P_5) * 0.08074)) + (texture2D (_MainTex, P_6) * 0.08074)) + (texture2D (_MainTex, P_7) * -0.02612))
+   + 
+    (texture2D (_MainTex, P_8) * -0.02612)
+  ) + (texture2D (_MainTex, P_9) * -0.02143)) + (texture2D (_MainTex, P_10) * -0.02143)).xyz;
   col_1.w = 1.0;
   gl_FragData[0] = col_1;
 }
@@ -332,7 +299,7 @@ aaaaaaaaapaaaaaaeeaaaaaaaaaaaaaaaaaaaaaaadaaaaaaabaaaaaaadamaaaa
 fdfgfpfaepfdejfeejepeoaafeeffiedepepfceeaaklklkl""
 }
 SubProgram ""gles3 "" {
-// Stats: 24 math, 9 textures
+// Stats: 33 math, 9 textures
 ""!!GLES3#version 300 es
 
 
@@ -362,61 +329,38 @@ void main ()
 
 layout(location=0) out mediump vec4 _glesFragData[4];
 uniform sampler2D _MainTex;
-uniform highp float _PixelSizeX;
-uniform highp float _PixelSizeY;
+uniform highp vec2 _ResampleOffset;
 in mediump vec2 xlv_TEXCOORD0;
 void main ()
 {
   lowp vec4 col_1;
-  highp vec2 tmpvar_2;
-  tmpvar_2.y = 0.0;
-  tmpvar_2.x = _PixelSizeX;
-  highp vec2 P_3;
-  P_3 = (xlv_TEXCOORD0 + tmpvar_2);
-  highp vec2 tmpvar_4;
-  tmpvar_4.y = 0.0;
-  highp float cse_5;
-  cse_5 = -(_PixelSizeX);
-  tmpvar_4.x = cse_5;
+  highp vec2 P_2;
+  highp vec2 cse_3;
+  cse_3 = -(_ResampleOffset);
+  P_2 = (xlv_TEXCOORD0 + cse_3);
+  highp vec2 P_4;
+  P_4 = (xlv_TEXCOORD0 + _ResampleOffset);
+  highp vec2 P_5;
+  P_5 = (xlv_TEXCOORD0 + (2.0 * cse_3));
   highp vec2 P_6;
-  P_6 = (xlv_TEXCOORD0 + tmpvar_4);
-  highp vec2 tmpvar_7;
-  tmpvar_7.x = 0.0;
-  tmpvar_7.y = _PixelSizeY;
+  P_6 = (xlv_TEXCOORD0 + (2.0 * _ResampleOffset));
+  highp vec2 P_7;
+  P_7 = (xlv_TEXCOORD0 + (3.0 * cse_3));
   highp vec2 P_8;
-  P_8 = (xlv_TEXCOORD0 + tmpvar_7);
-  highp vec2 tmpvar_9;
-  tmpvar_9.x = 0.0;
-  highp float cse_10;
-  cse_10 = -(_PixelSizeY);
-  tmpvar_9.y = cse_10;
-  highp vec2 P_11;
-  P_11 = (xlv_TEXCOORD0 + tmpvar_9);
-  highp vec2 tmpvar_12;
-  tmpvar_12.x = _PixelSizeX;
-  tmpvar_12.y = _PixelSizeY;
-  highp vec2 P_13;
-  P_13 = (xlv_TEXCOORD0 + tmpvar_12);
-  highp vec2 tmpvar_14;
-  tmpvar_14.x = cse_5;
-  tmpvar_14.y = cse_10;
-  highp vec2 P_15;
-  P_15 = (xlv_TEXCOORD0 + tmpvar_14);
-  highp vec2 tmpvar_16;
-  tmpvar_16.x = cse_5;
-  tmpvar_16.y = _PixelSizeY;
-  highp vec2 P_17;
-  P_17 = (xlv_TEXCOORD0 + tmpvar_16);
-  highp vec2 tmpvar_18;
-  tmpvar_18.x = _PixelSizeX;
-  tmpvar_18.y = cse_10;
-  highp vec2 P_19;
-  P_19 = (xlv_TEXCOORD0 + tmpvar_18);
+  P_8 = (xlv_TEXCOORD0 + (3.0 * _ResampleOffset));
+  highp vec2 P_9;
+  P_9 = (xlv_TEXCOORD0 + (4.0 * cse_3));
+  highp vec2 P_10;
+  P_10 = (xlv_TEXCOORD0 + (4.0 * _ResampleOffset));
   col_1.xyz = (((
     ((((
-      ((texture (_MainTex, xlv_TEXCOORD0) + texture (_MainTex, P_3)) + texture (_MainTex, P_6))
-     + texture (_MainTex, P_8)) + texture (_MainTex, P_11)) + texture (_MainTex, P_13)) + texture (_MainTex, P_15))
-   + texture (_MainTex, P_17)) + texture (_MainTex, P_19)) / 9.0).xyz;
+      ((texture (_MainTex, xlv_TEXCOORD0) * 0.38026) + (texture (_MainTex, P_2) * 0.27667))
+     + 
+      (texture (_MainTex, P_4) * 0.27667)
+    ) + (texture (_MainTex, P_5) * 0.08074)) + (texture (_MainTex, P_6) * 0.08074)) + (texture (_MainTex, P_7) * -0.02612))
+   + 
+    (texture (_MainTex, P_8) * -0.02612)
+  ) + (texture (_MainTex, P_9) * -0.02143)) + (texture (_MainTex, P_10) * -0.02143)).xyz;
   col_1.w = 1.0;
   _glesFragData[0] = col_1;
 }
@@ -467,183 +411,180 @@ SubProgram ""opengl "" {
 ""!!GLSL""
 }
 SubProgram ""d3d9 "" {
-// Stats: 30 math, 9 textures
-Float 0 [_PixelSizeX]
-Float 1 [_PixelSizeY]
+// Stats: 21 math, 9 textures
+Vector 0 [_ResampleOffset]
 SetTexture 0 [_MainTex] 2D 0
 ""ps_2_0
-def c2, 0, 0.111111112, 1, 0
+def c1, 0.276670009, 0.380259991, -2, 0.0807399973
+def c2, -3, -0.0261199996, 3, -4
+def c3, -0.0214300007, 1, 0, 0
 dcl t0.xy
 dcl_2d s0
-add r0.x, t0.x, c0.x
-mov r0.y, t0.y
-mov r1.x, -c0.x
-mov r1.y, c2.x
-add r1.xy, r1, t0
-mov r2.x, t0.x
-add r2.y, t0.y, c1.x
-mov r3.x, t0.x
-add r3.y, t0.y, -c1.x
-add r4.x, t0.x, c0.x
-add r4.y, t0.y, c1.x
-mov r5.x, -c0.x
-mov r5.y, -c1.x
-add r5.xy, r5, t0
-mov r6.x, -c0.x
-mov r6.y, c1.x
-add r6.xy, r6, t0
-add r7.x, t0.x, c0.x
-add r7.y, t0.y, -c1.x
+add r0.xy, t0, -c0
+add r1.xy, t0, c0
+mov r0.z, c1.z
+mad r2.xy, c0, r0.z, t0
+mad r3.xy, c0, -r0.z, t0
+mov r4.xy, c0
+mad r5.xy, r4, c2.x, t0
+mad r6.xy, r4, c2.z, t0
+mad r7.xy, r4, c2.w, t0
+mad r4.xy, r4, -c2.w, t0
 texld r0, r0, s0
-texld_pp r8, t0, s0
+texld r8, t0, s0
 texld r1, r1, s0
 texld r2, r2, s0
 texld r3, r3, s0
-texld r4, r4, s0
 texld r5, r5, s0
 texld r6, r6, s0
 texld r7, r7, s0
-add_pp r0.xyz, r0, r8
-add_pp r0.xyz, r1, r0
-add_pp r0.xyz, r2, r0
-add_pp r0.xyz, r3, r0
-add_pp r0.xyz, r4, r0
-add_pp r0.xyz, r5, r0
-add_pp r0.xyz, r6, r0
-add_pp r0.xyz, r7, r0
-mul_pp r0.xyz, r0, c2.y
-mov_pp r0.w, c2.z
+texld r4, r4, s0
+mul r0.xyz, r0, c1.x
+mad_pp r0.xyz, r8, c1.y, r0
+mad_pp r0.xyz, r1, c1.x, r0
+mad_pp r0.xyz, r2, c1.w, r0
+mad_pp r0.xyz, r3, c1.w, r0
+mad_pp r0.xyz, r5, c2.y, r0
+mad_pp r0.xyz, r6, c2.y, r0
+mad_pp r0.xyz, r7, c3.x, r0
+mad_pp r0.xyz, r4, c3.x, r0
+mov_pp r0.w, c3.y
 mov_pp oC0, r0
 
 ""
 }
 SubProgram ""d3d11 "" {
-// Stats: 16 math, 9 textures
+// Stats: 15 math, 9 textures
 SetTexture 0 [_MainTex] 2D 0
 ConstBuffer ""$Globals"" 128
-Float 96 [_PixelSizeX]
-Float 100 [_PixelSizeY]
+Vector 96 [_ResampleOffset] 2
 BindCB  ""$Globals"" 0
 ""ps_4_0
-eefiecedkokfonbhlflccbocfnmcgfplmggeehbpabaaaaaaliaeaaaaadaaaaaa
+eefiecedniblpifgigbfpjoeihdffkfjbgadlnegabaaaaaacmafaaaaadaaaaaa
 cmaaaaaaieaaaaaaliaaaaaaejfdeheofaaaaaaaacaaaaaaaiaaaaaadiaaaaaa
 aaaaaaaaabaaaaaaadaaaaaaaaaaaaaaapaaaaaaeeaaaaaaaaaaaaaaaaaaaaaa
 adaaaaaaabaaaaaaadadaaaafdfgfpfaepfdejfeejepeoaafeeffiedepepfcee
 aaklklklepfdeheocmaaaaaaabaaaaaaaiaaaaaacaaaaaaaaaaaaaaaaaaaaaaa
-adaaaaaaaaaaaaaaapaaaaaafdfgfpfegbhcghgfheaaklklfdeieefcpiadaaaa
-eaaaaaaapoaaaaaafjaaaaaeegiocaaaaaaaaaaaahaaaaaafkaaaaadaagabaaa
+adaaaaaaaaaaaaaaapaaaaaafdfgfpfegbhcghgfheaaklklfdeieefcgmaeaaaa
+eaaaaaaablabaaaafjaaaaaeegiocaaaaaaaaaaaahaaaaaafkaaaaadaagabaaa
 aaaaaaaafibiaaaeaahabaaaaaaaaaaaffffaaaagcbaaaaddcbabaaaabaaaaaa
-gfaaaaadpccabaaaaaaaaaaagiaaaaacaeaaaaaadgaaaaagjcaabaaaaaaaaaaa
-agiecaaaaaaaaaaaagaaaaaadgaaaaaigcaabaaaaaaaaaaaaceaaaaaaaaaaaaa
-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaahpcaabaaaaaaaaaaaegaobaaaaaaaaaaa
-egbebaaaabaaaaaaefaaaaajpcaabaaaabaaaaaaegaabaaaaaaaaaaaeghobaaa
-aaaaaaaaaagabaaaaaaaaaaaefaaaaajpcaabaaaaaaaaaaaogakbaaaaaaaaaaa
-eghobaaaaaaaaaaaaagabaaaaaaaaaaaefaaaaajpcaabaaaacaaaaaaegbabaaa
-abaaaaaaeghobaaaaaaaaaaaaagabaaaaaaaaaaaaaaaaaahhcaabaaaabaaaaaa
-egacbaaaabaaaaaaegacbaaaacaaaaaadgaaaaahhcaabaaaacaaaaaaegiacaia
-ebaaaaaaaaaaaaaaagaaaaaadgaaaaaficaabaaaacaaaaaaabeaaaaaaaaaaaaa
-aaaaaaahpcaabaaaacaaaaaaogaebaaaacaaaaaaegbebaaaabaaaaaaefaaaaaj
-pcaabaaaadaaaaaaegaabaaaacaaaaaaeghobaaaaaaaaaaaaagabaaaaaaaaaaa
-efaaaaajpcaabaaaacaaaaaaogakbaaaacaaaaaaeghobaaaaaaaaaaaaagabaaa
-aaaaaaaaaaaaaaahhcaabaaaabaaaaaaegacbaaaabaaaaaaegacbaaaadaaaaaa
-aaaaaaahhcaabaaaaaaaaaaaegacbaaaaaaaaaaaegacbaaaabaaaaaadgaaaaaf
-bcaabaaaabaaaaaaabeaaaaaaaaaaaaadgaaaaahccaabaaaabaaaaaabkiacaia
-ebaaaaaaaaaaaaaaagaaaaaaaaaaaaahdcaabaaaabaaaaaaegaabaaaabaaaaaa
-egbabaaaabaaaaaaefaaaaajpcaabaaaabaaaaaaegaabaaaabaaaaaaeghobaaa
-aaaaaaaaaagabaaaaaaaaaaaaaaaaaahhcaabaaaaaaaaaaaegacbaaaaaaaaaaa
-egacbaaaabaaaaaaaaaaaaaidcaabaaaabaaaaaaegbabaaaabaaaaaaegiacaaa
-aaaaaaaaagaaaaaaefaaaaajpcaabaaaabaaaaaaegaabaaaabaaaaaaeghobaaa
-aaaaaaaaaagabaaaaaaaaaaaaaaaaaahhcaabaaaaaaaaaaaegacbaaaaaaaaaaa
-egacbaaaabaaaaaaaaaaaaahhcaabaaaaaaaaaaaegacbaaaacaaaaaaegacbaaa
-aaaaaaaadcaaaaanpcaabaaaabaaaaaaegiecaaaaaaaaaaaagaaaaaaaceaaaaa
-aaaaialpaaaaiadpaaaaiadpaaaaialpegbebaaaabaaaaaaefaaaaajpcaabaaa
-acaaaaaaegaabaaaabaaaaaaeghobaaaaaaaaaaaaagabaaaaaaaaaaaefaaaaaj
-pcaabaaaabaaaaaaogakbaaaabaaaaaaeghobaaaaaaaaaaaaagabaaaaaaaaaaa
-aaaaaaahhcaabaaaaaaaaaaaegacbaaaaaaaaaaaegacbaaaacaaaaaaaaaaaaah
-hcaabaaaaaaaaaaaegacbaaaabaaaaaaegacbaaaaaaaaaaadiaaaaakhccabaaa
-aaaaaaaaegacbaaaaaaaaaaaaceaaaaadjiooddndjiooddndjiooddnaaaaaaaa
-dgaaaaaficcabaaaaaaaaaaaabeaaaaaaaaaiadpdoaaaaab""
+gfaaaaadpccabaaaaaaaaaaagiaaaaacadaaaaaaaaaaaaajdcaabaaaaaaaaaaa
+egbabaaaabaaaaaaegiacaiaebaaaaaaaaaaaaaaagaaaaaaefaaaaajpcaabaaa
+aaaaaaaaegaabaaaaaaaaaaaeghobaaaaaaaaaaaaagabaaaaaaaaaaadiaaaaak
+hcaabaaaaaaaaaaaegacbaaaaaaaaaaaaceaaaaalbkhindolbkhindolbkhindo
+aaaaaaaaefaaaaajpcaabaaaabaaaaaaegbabaaaabaaaaaaeghobaaaaaaaaaaa
+aagabaaaaaaaaaaadcaaaaamhcaabaaaaaaaaaaaegacbaaaabaaaaaaaceaaaaa
+halbmcdohalbmcdohalbmcdoaaaaaaaaegacbaaaaaaaaaaaaaaaaaaidcaabaaa
+abaaaaaaegbabaaaabaaaaaaegiacaaaaaaaaaaaagaaaaaaefaaaaajpcaabaaa
+abaaaaaaegaabaaaabaaaaaaeghobaaaaaaaaaaaaagabaaaaaaaaaaadcaaaaam
+hcaabaaaaaaaaaaaegacbaaaabaaaaaaaceaaaaalbkhindolbkhindolbkhindo
+aaaaaaaaegacbaaaaaaaaaaadcaaaaanpcaabaaaabaaaaaaegiecaaaaaaaaaaa
+agaaaaaaaceaaaaaaaaaaamaaaaaaamaaaaaeamaaaaaeamaegbebaaaabaaaaaa
+efaaaaajpcaabaaaacaaaaaaegaabaaaabaaaaaaeghobaaaaaaaaaaaaagabaaa
+aaaaaaaaefaaaaajpcaabaaaabaaaaaaogakbaaaabaaaaaaeghobaaaaaaaaaaa
+aagabaaaaaaaaaaadcaaaaamhcaabaaaaaaaaaaaegacbaaaacaaaaaaaceaaaaa
+adflkfdnadflkfdnadflkfdnaaaaaaaaegacbaaaaaaaaaaadcaaaaandcaabaaa
+acaaaaaaegiacaaaaaaaaaaaagaaaaaaaceaaaaaaaaaaaeaaaaaaaeaaaaaaaaa
+aaaaaaaaegbabaaaabaaaaaaefaaaaajpcaabaaaacaaaaaaegaabaaaacaaaaaa
+eghobaaaaaaaaaaaaagabaaaaaaaaaaadcaaaaamhcaabaaaaaaaaaaaegacbaaa
+acaaaaaaaceaaaaaadflkfdnadflkfdnadflkfdnaaaaaaaaegacbaaaaaaaaaaa
+dcaaaaamhcaabaaaaaaaaaaaegacbaaaabaaaaaaaceaaaaajmpjnflmjmpjnflm
+jmpjnflmaaaaaaaaegacbaaaaaaaaaaadcaaaaanpcaabaaaabaaaaaaegiecaaa
+aaaaaaaaagaaaaaaaceaaaaaaaaaeaeaaaaaeaeaaaaaiamaaaaaiamaegbebaaa
+abaaaaaaefaaaaajpcaabaaaacaaaaaaegaabaaaabaaaaaaeghobaaaaaaaaaaa
+aagabaaaaaaaaaaaefaaaaajpcaabaaaabaaaaaaogakbaaaabaaaaaaeghobaaa
+aaaaaaaaaagabaaaaaaaaaaadcaaaaamhcaabaaaaaaaaaaaegacbaaaacaaaaaa
+aceaaaaajmpjnflmjmpjnflmjmpjnflmaaaaaaaaegacbaaaaaaaaaaadcaaaaam
+hcaabaaaaaaaaaaaegacbaaaabaaaaaaaceaaaaapiinkplmpiinkplmpiinkplm
+aaaaaaaaegacbaaaaaaaaaaadcaaaaandcaabaaaabaaaaaaegiacaaaaaaaaaaa
+agaaaaaaaceaaaaaaaaaiaeaaaaaiaeaaaaaaaaaaaaaaaaaegbabaaaabaaaaaa
+efaaaaajpcaabaaaabaaaaaaegaabaaaabaaaaaaeghobaaaaaaaaaaaaagabaaa
+aaaaaaaadcaaaaamhccabaaaaaaaaaaaegacbaaaabaaaaaaaceaaaaapiinkplm
+piinkplmpiinkplmaaaaaaaaegacbaaaaaaaaaaadgaaaaaficcabaaaaaaaaaaa
+abeaaaaaaaaaiadpdoaaaaab""
 }
 SubProgram ""gles "" {
 ""!!GLES""
 }
 SubProgram ""d3d11_9x "" {
-// Stats: 16 math, 9 textures
+// Stats: 15 math, 9 textures
 SetTexture 0 [_MainTex] 2D 0
 ConstBuffer ""$Globals"" 128
-Float 96 [_PixelSizeX]
-Float 100 [_PixelSizeY]
+Vector 96 [_ResampleOffset] 2
 BindCB  ""$Globals"" 0
 ""ps_4_0_level_9_1
-eefiecedkmmfojdhgdehbpghdppmifgnmcljjeleabaaaaaaeeahaaaaaeaaaaaa
-daaaaaaaliacaaaaliagaaaabaahaaaaebgpgodjiaacaaaaiaacaaaaaaacpppp
-emacaaaadeaaaaaaabaaciaaaaaadeaaaaaadeaaabaaceaaaaaadeaaaaaaaaaa
-aaaaagaaabaaaaaaaaaaaaaaaaacppppfbaaaaafabaaapkaaaaaaaaaaaaaialp
-aaaaiadpdjiooddnbpaaaaacaaaaaaiaaaaaadlabpaaaaacaaaaaajaaaaiapka
-acaaaaadaaaaabiaaaaaaalaaaaaaakaabaaaaacaaaaaciaaaaafflaabaaaaac
-abaaabiaaaaaaakbabaaaaacabaaaciaabaaaakaacaaaaadabaaadiaabaaoeia
-aaaaoelaabaaaaacacaaabiaaaaaaalaacaaaaadacaaaciaaaaafflaaaaaffka
-abaaaaacadaaabiaaaaaaalaacaaaaadadaaaciaaaaafflaaaaaffkbacaaaaad
-aeaaadiaaaaaoelaaaaaoekaacaaaaadafaaadiaaaaaoelaaaaaoekbabaaaaac
-agaaadiaaaaaoekaaeaaaaaeagaaadiaagaaoeiaabaamjkaaaaaoelaacaaaaad
-ahaaabiaaaaaaalaaaaaaakaacaaaaadahaaaciaaaaafflaaaaaffkbecaaaaad
-aaaaapiaaaaaoeiaaaaioekaecaaaaadaiaacpiaaaaaoelaaaaioekaecaaaaad
-abaaapiaabaaoeiaaaaioekaecaaaaadacaaapiaacaaoeiaaaaioekaecaaaaad
-adaaapiaadaaoeiaaaaioekaecaaaaadaeaaapiaaeaaoeiaaaaioekaecaaaaad
-afaaapiaafaaoeiaaaaioekaecaaaaadagaaapiaagaaoeiaaaaioekaecaaaaad
-ahaaapiaahaaoeiaaaaioekaacaaaaadaaaachiaaaaaoeiaaiaaoeiaacaaaaad
-aaaachiaabaaoeiaaaaaoeiaacaaaaadaaaachiaacaaoeiaaaaaoeiaacaaaaad
-aaaachiaadaaoeiaaaaaoeiaacaaaaadaaaachiaaeaaoeiaaaaaoeiaacaaaaad
-aaaachiaafaaoeiaaaaaoeiaacaaaaadaaaachiaagaaoeiaaaaaoeiaacaaaaad
-aaaachiaahaaoeiaaaaaoeiaafaaaaadaaaachiaaaaaoeiaabaappkaabaaaaac
-aaaaciiaabaakkkaabaaaaacaaaicpiaaaaaoeiappppaaaafdeieefcpiadaaaa
-eaaaaaaapoaaaaaafjaaaaaeegiocaaaaaaaaaaaahaaaaaafkaaaaadaagabaaa
-aaaaaaaafibiaaaeaahabaaaaaaaaaaaffffaaaagcbaaaaddcbabaaaabaaaaaa
-gfaaaaadpccabaaaaaaaaaaagiaaaaacaeaaaaaadgaaaaagjcaabaaaaaaaaaaa
-agiecaaaaaaaaaaaagaaaaaadgaaaaaigcaabaaaaaaaaaaaaceaaaaaaaaaaaaa
-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaahpcaabaaaaaaaaaaaegaobaaaaaaaaaaa
-egbebaaaabaaaaaaefaaaaajpcaabaaaabaaaaaaegaabaaaaaaaaaaaeghobaaa
-aaaaaaaaaagabaaaaaaaaaaaefaaaaajpcaabaaaaaaaaaaaogakbaaaaaaaaaaa
-eghobaaaaaaaaaaaaagabaaaaaaaaaaaefaaaaajpcaabaaaacaaaaaaegbabaaa
-abaaaaaaeghobaaaaaaaaaaaaagabaaaaaaaaaaaaaaaaaahhcaabaaaabaaaaaa
-egacbaaaabaaaaaaegacbaaaacaaaaaadgaaaaahhcaabaaaacaaaaaaegiacaia
-ebaaaaaaaaaaaaaaagaaaaaadgaaaaaficaabaaaacaaaaaaabeaaaaaaaaaaaaa
-aaaaaaahpcaabaaaacaaaaaaogaebaaaacaaaaaaegbebaaaabaaaaaaefaaaaaj
-pcaabaaaadaaaaaaegaabaaaacaaaaaaeghobaaaaaaaaaaaaagabaaaaaaaaaaa
-efaaaaajpcaabaaaacaaaaaaogakbaaaacaaaaaaeghobaaaaaaaaaaaaagabaaa
-aaaaaaaaaaaaaaahhcaabaaaabaaaaaaegacbaaaabaaaaaaegacbaaaadaaaaaa
-aaaaaaahhcaabaaaaaaaaaaaegacbaaaaaaaaaaaegacbaaaabaaaaaadgaaaaaf
-bcaabaaaabaaaaaaabeaaaaaaaaaaaaadgaaaaahccaabaaaabaaaaaabkiacaia
-ebaaaaaaaaaaaaaaagaaaaaaaaaaaaahdcaabaaaabaaaaaaegaabaaaabaaaaaa
-egbabaaaabaaaaaaefaaaaajpcaabaaaabaaaaaaegaabaaaabaaaaaaeghobaaa
-aaaaaaaaaagabaaaaaaaaaaaaaaaaaahhcaabaaaaaaaaaaaegacbaaaaaaaaaaa
-egacbaaaabaaaaaaaaaaaaaidcaabaaaabaaaaaaegbabaaaabaaaaaaegiacaaa
-aaaaaaaaagaaaaaaefaaaaajpcaabaaaabaaaaaaegaabaaaabaaaaaaeghobaaa
-aaaaaaaaaagabaaaaaaaaaaaaaaaaaahhcaabaaaaaaaaaaaegacbaaaaaaaaaaa
-egacbaaaabaaaaaaaaaaaaahhcaabaaaaaaaaaaaegacbaaaacaaaaaaegacbaaa
-aaaaaaaadcaaaaanpcaabaaaabaaaaaaegiecaaaaaaaaaaaagaaaaaaaceaaaaa
-aaaaialpaaaaiadpaaaaiadpaaaaialpegbebaaaabaaaaaaefaaaaajpcaabaaa
-acaaaaaaegaabaaaabaaaaaaeghobaaaaaaaaaaaaagabaaaaaaaaaaaefaaaaaj
-pcaabaaaabaaaaaaogakbaaaabaaaaaaeghobaaaaaaaaaaaaagabaaaaaaaaaaa
-aaaaaaahhcaabaaaaaaaaaaaegacbaaaaaaaaaaaegacbaaaacaaaaaaaaaaaaah
-hcaabaaaaaaaaaaaegacbaaaabaaaaaaegacbaaaaaaaaaaadiaaaaakhccabaaa
-aaaaaaaaegacbaaaaaaaaaaaaceaaaaadjiooddndjiooddndjiooddnaaaaaaaa
-dgaaaaaficcabaaaaaaaaaaaabeaaaaaaaaaiadpdoaaaaabejfdeheofaaaaaaa
-acaaaaaaaiaaaaaadiaaaaaaaaaaaaaaabaaaaaaadaaaaaaaaaaaaaaapaaaaaa
-eeaaaaaaaaaaaaaaaaaaaaaaadaaaaaaabaaaaaaadadaaaafdfgfpfaepfdejfe
-ejepeoaafeeffiedepepfceeaaklklklepfdeheocmaaaaaaabaaaaaaaiaaaaaa
-caaaaaaaaaaaaaaaaaaaaaaaadaaaaaaaaaaaaaaapaaaaaafdfgfpfegbhcghgf
-heaaklkl""
+eefiecedfgdnigikofahfphgjobgcagkinkphpogabaaaaaanmahaaaaaeaaaaaa
+daaaaaaanmacaaaafaahaaaakiahaaaaebgpgodjkeacaaaakeacaaaaaaacpppp
+haacaaaadeaaaaaaabaaciaaaaaadeaaaaaadeaaabaaceaaaaaadeaaaaaaaaaa
+aaaaagaaabaaaaaaaaaaaaaaaaacppppfbaaaaafabaaapkalbkhindohalbmcdo
+aaaaaamaadflkfdnfbaaaaafacaaapkaaaaaeamajmpjnflmaaaaeaeaaaaaiama
+fbaaaaafadaaapkapiinkplmaaaaiadpaaaaaaaaaaaaaaaabpaaaaacaaaaaaia
+aaaaadlabpaaaaacaaaaaajaaaaiapkaacaaaaadaaaaadiaaaaaoelaaaaaoekb
+acaaaaadabaaadiaaaaaoelaaaaaoekaabaaaaacaaaaaeiaabaakkkaaeaaaaae
+acaaadiaaaaaoekaaaaakkiaaaaaoelaaeaaaaaeadaaadiaaaaaoekaaaaakkib
+aaaaoelaabaaaaacaeaaadiaaaaaoekaaeaaaaaeafaaadiaaeaaoeiaacaaaaka
+aaaaoelaaeaaaaaeagaaadiaaeaaoeiaacaakkkaaaaaoelaaeaaaaaeahaaadia
+aeaaoeiaacaappkaaaaaoelaaeaaaaaeaeaaadiaaeaaoeiaacaappkbaaaaoela
+ecaaaaadaaaaapiaaaaaoeiaaaaioekaecaaaaadaiaaapiaaaaaoelaaaaioeka
+ecaaaaadabaaapiaabaaoeiaaaaioekaecaaaaadacaaapiaacaaoeiaaaaioeka
+ecaaaaadadaaapiaadaaoeiaaaaioekaecaaaaadafaaapiaafaaoeiaaaaioeka
+ecaaaaadagaaapiaagaaoeiaaaaioekaecaaaaadahaaapiaahaaoeiaaaaioeka
+ecaaaaadaeaaapiaaeaaoeiaaaaioekaafaaaaadaaaaahiaaaaaoeiaabaaaaka
+aeaaaaaeaaaachiaaiaaoeiaabaaffkaaaaaoeiaaeaaaaaeaaaachiaabaaoeia
+abaaaakaaaaaoeiaaeaaaaaeaaaachiaacaaoeiaabaappkaaaaaoeiaaeaaaaae
+aaaachiaadaaoeiaabaappkaaaaaoeiaaeaaaaaeaaaachiaafaaoeiaacaaffka
+aaaaoeiaaeaaaaaeaaaachiaagaaoeiaacaaffkaaaaaoeiaaeaaaaaeaaaachia
+ahaaoeiaadaaaakaaaaaoeiaaeaaaaaeaaaachiaaeaaoeiaadaaaakaaaaaoeia
+abaaaaacaaaaciiaadaaffkaabaaaaacaaaicpiaaaaaoeiappppaaaafdeieefc
+gmaeaaaaeaaaaaaablabaaaafjaaaaaeegiocaaaaaaaaaaaahaaaaaafkaaaaad
+aagabaaaaaaaaaaafibiaaaeaahabaaaaaaaaaaaffffaaaagcbaaaaddcbabaaa
+abaaaaaagfaaaaadpccabaaaaaaaaaaagiaaaaacadaaaaaaaaaaaaajdcaabaaa
+aaaaaaaaegbabaaaabaaaaaaegiacaiaebaaaaaaaaaaaaaaagaaaaaaefaaaaaj
+pcaabaaaaaaaaaaaegaabaaaaaaaaaaaeghobaaaaaaaaaaaaagabaaaaaaaaaaa
+diaaaaakhcaabaaaaaaaaaaaegacbaaaaaaaaaaaaceaaaaalbkhindolbkhindo
+lbkhindoaaaaaaaaefaaaaajpcaabaaaabaaaaaaegbabaaaabaaaaaaeghobaaa
+aaaaaaaaaagabaaaaaaaaaaadcaaaaamhcaabaaaaaaaaaaaegacbaaaabaaaaaa
+aceaaaaahalbmcdohalbmcdohalbmcdoaaaaaaaaegacbaaaaaaaaaaaaaaaaaai
+dcaabaaaabaaaaaaegbabaaaabaaaaaaegiacaaaaaaaaaaaagaaaaaaefaaaaaj
+pcaabaaaabaaaaaaegaabaaaabaaaaaaeghobaaaaaaaaaaaaagabaaaaaaaaaaa
+dcaaaaamhcaabaaaaaaaaaaaegacbaaaabaaaaaaaceaaaaalbkhindolbkhindo
+lbkhindoaaaaaaaaegacbaaaaaaaaaaadcaaaaanpcaabaaaabaaaaaaegiecaaa
+aaaaaaaaagaaaaaaaceaaaaaaaaaaamaaaaaaamaaaaaeamaaaaaeamaegbebaaa
+abaaaaaaefaaaaajpcaabaaaacaaaaaaegaabaaaabaaaaaaeghobaaaaaaaaaaa
+aagabaaaaaaaaaaaefaaaaajpcaabaaaabaaaaaaogakbaaaabaaaaaaeghobaaa
+aaaaaaaaaagabaaaaaaaaaaadcaaaaamhcaabaaaaaaaaaaaegacbaaaacaaaaaa
+aceaaaaaadflkfdnadflkfdnadflkfdnaaaaaaaaegacbaaaaaaaaaaadcaaaaan
+dcaabaaaacaaaaaaegiacaaaaaaaaaaaagaaaaaaaceaaaaaaaaaaaeaaaaaaaea
+aaaaaaaaaaaaaaaaegbabaaaabaaaaaaefaaaaajpcaabaaaacaaaaaaegaabaaa
+acaaaaaaeghobaaaaaaaaaaaaagabaaaaaaaaaaadcaaaaamhcaabaaaaaaaaaaa
+egacbaaaacaaaaaaaceaaaaaadflkfdnadflkfdnadflkfdnaaaaaaaaegacbaaa
+aaaaaaaadcaaaaamhcaabaaaaaaaaaaaegacbaaaabaaaaaaaceaaaaajmpjnflm
+jmpjnflmjmpjnflmaaaaaaaaegacbaaaaaaaaaaadcaaaaanpcaabaaaabaaaaaa
+egiecaaaaaaaaaaaagaaaaaaaceaaaaaaaaaeaeaaaaaeaeaaaaaiamaaaaaiama
+egbebaaaabaaaaaaefaaaaajpcaabaaaacaaaaaaegaabaaaabaaaaaaeghobaaa
+aaaaaaaaaagabaaaaaaaaaaaefaaaaajpcaabaaaabaaaaaaogakbaaaabaaaaaa
+eghobaaaaaaaaaaaaagabaaaaaaaaaaadcaaaaamhcaabaaaaaaaaaaaegacbaaa
+acaaaaaaaceaaaaajmpjnflmjmpjnflmjmpjnflmaaaaaaaaegacbaaaaaaaaaaa
+dcaaaaamhcaabaaaaaaaaaaaegacbaaaabaaaaaaaceaaaaapiinkplmpiinkplm
+piinkplmaaaaaaaaegacbaaaaaaaaaaadcaaaaandcaabaaaabaaaaaaegiacaaa
+aaaaaaaaagaaaaaaaceaaaaaaaaaiaeaaaaaiaeaaaaaaaaaaaaaaaaaegbabaaa
+abaaaaaaefaaaaajpcaabaaaabaaaaaaegaabaaaabaaaaaaeghobaaaaaaaaaaa
+aagabaaaaaaaaaaadcaaaaamhccabaaaaaaaaaaaegacbaaaabaaaaaaaceaaaaa
+piinkplmpiinkplmpiinkplmaaaaaaaaegacbaaaaaaaaaaadgaaaaaficcabaaa
+aaaaaaaaabeaaaaaaaaaiadpdoaaaaabejfdeheofaaaaaaaacaaaaaaaiaaaaaa
+diaaaaaaaaaaaaaaabaaaaaaadaaaaaaaaaaaaaaapaaaaaaeeaaaaaaaaaaaaaa
+aaaaaaaaadaaaaaaabaaaaaaadadaaaafdfgfpfaepfdejfeejepeoaafeeffied
+epepfceeaaklklklepfdeheocmaaaaaaabaaaaaaaiaaaaaacaaaaaaaaaaaaaaa
+aaaaaaaaadaaaaaaaaaaaaaaapaaaaaafdfgfpfegbhcghgfheaaklkl""
 }
 SubProgram ""gles3 "" {
 ""!!GLES3""
 }
 SubProgram ""metal "" {
-// Stats: 24 math, 9 textures
+// Stats: 33 math, 9 textures
 SetTexture 0 [_MainTex] 2D 0
 ConstBuffer ""$Globals"" 8
-Float 0 [_PixelSizeX]
-Float 4 [_PixelSizeY]
+Vector 0 [_ResampleOffset] 2
 ""metal_fs
 #include <metal_stdlib>
 using namespace metal;
@@ -654,63 +595,40 @@ struct xlatMtlShaderOutput {
   half4 _glesFragData_0 [[color(0)]];
 };
 struct xlatMtlShaderUniform {
-  float _PixelSizeX;
-  float _PixelSizeY;
+  float2 _ResampleOffset;
 };
 fragment xlatMtlShaderOutput xlatMtlMain (xlatMtlShaderInput _mtl_i [[stage_in]], constant xlatMtlShaderUniform& _mtl_u [[buffer(0)]]
   ,   texture2d<half> _MainTex [[texture(0)]], sampler _mtlsmp__MainTex [[sampler(0)]])
 {
   xlatMtlShaderOutput _mtl_o;
   half4 col_1;
-  float2 tmpvar_2;
-  tmpvar_2.y = 0.0;
-  tmpvar_2.x = _mtl_u._PixelSizeX;
-  float2 P_3;
-  P_3 = ((float2)_mtl_i.xlv_TEXCOORD0 + tmpvar_2);
-  float2 tmpvar_4;
-  tmpvar_4.y = 0.0;
-  float cse_5;
-  cse_5 = -(_mtl_u._PixelSizeX);
-  tmpvar_4.x = cse_5;
+  float2 P_2;
+  float2 cse_3;
+  cse_3 = -(_mtl_u._ResampleOffset);
+  P_2 = ((float2)_mtl_i.xlv_TEXCOORD0 + cse_3);
+  float2 P_4;
+  P_4 = ((float2)_mtl_i.xlv_TEXCOORD0 + _mtl_u._ResampleOffset);
+  float2 P_5;
+  P_5 = ((float2)_mtl_i.xlv_TEXCOORD0 + (2.0 * cse_3));
   float2 P_6;
-  P_6 = ((float2)_mtl_i.xlv_TEXCOORD0 + tmpvar_4);
-  float2 tmpvar_7;
-  tmpvar_7.x = 0.0;
-  tmpvar_7.y = _mtl_u._PixelSizeY;
+  P_6 = ((float2)_mtl_i.xlv_TEXCOORD0 + (2.0 * _mtl_u._ResampleOffset));
+  float2 P_7;
+  P_7 = ((float2)_mtl_i.xlv_TEXCOORD0 + (3.0 * cse_3));
   float2 P_8;
-  P_8 = ((float2)_mtl_i.xlv_TEXCOORD0 + tmpvar_7);
-  float2 tmpvar_9;
-  tmpvar_9.x = 0.0;
-  float cse_10;
-  cse_10 = -(_mtl_u._PixelSizeY);
-  tmpvar_9.y = cse_10;
-  float2 P_11;
-  P_11 = ((float2)_mtl_i.xlv_TEXCOORD0 + tmpvar_9);
-  float2 tmpvar_12;
-  tmpvar_12.x = _mtl_u._PixelSizeX;
-  tmpvar_12.y = _mtl_u._PixelSizeY;
-  float2 P_13;
-  P_13 = ((float2)_mtl_i.xlv_TEXCOORD0 + tmpvar_12);
-  float2 tmpvar_14;
-  tmpvar_14.x = cse_5;
-  tmpvar_14.y = cse_10;
-  float2 P_15;
-  P_15 = ((float2)_mtl_i.xlv_TEXCOORD0 + tmpvar_14);
-  float2 tmpvar_16;
-  tmpvar_16.x = cse_5;
-  tmpvar_16.y = _mtl_u._PixelSizeY;
-  float2 P_17;
-  P_17 = ((float2)_mtl_i.xlv_TEXCOORD0 + tmpvar_16);
-  float2 tmpvar_18;
-  tmpvar_18.x = _mtl_u._PixelSizeX;
-  tmpvar_18.y = cse_10;
-  float2 P_19;
-  P_19 = ((float2)_mtl_i.xlv_TEXCOORD0 + tmpvar_18);
+  P_8 = ((float2)_mtl_i.xlv_TEXCOORD0 + (3.0 * _mtl_u._ResampleOffset));
+  float2 P_9;
+  P_9 = ((float2)_mtl_i.xlv_TEXCOORD0 + (4.0 * cse_3));
+  float2 P_10;
+  P_10 = ((float2)_mtl_i.xlv_TEXCOORD0 + (4.0 * _mtl_u._ResampleOffset));
   col_1.xyz = (((
     ((((
-      ((_MainTex.sample(_mtlsmp__MainTex, (float2)(_mtl_i.xlv_TEXCOORD0)) + _MainTex.sample(_mtlsmp__MainTex, (float2)(P_3))) + _MainTex.sample(_mtlsmp__MainTex, (float2)(P_6)))
-     + _MainTex.sample(_mtlsmp__MainTex, (float2)(P_8))) + _MainTex.sample(_mtlsmp__MainTex, (float2)(P_11))) + _MainTex.sample(_mtlsmp__MainTex, (float2)(P_13))) + _MainTex.sample(_mtlsmp__MainTex, (float2)(P_15)))
-   + _MainTex.sample(_mtlsmp__MainTex, (float2)(P_17))) + _MainTex.sample(_mtlsmp__MainTex, (float2)(P_19))) / (half)9.0).xyz;
+      ((_MainTex.sample(_mtlsmp__MainTex, (float2)(_mtl_i.xlv_TEXCOORD0)) * (half)0.38026) + (_MainTex.sample(_mtlsmp__MainTex, (float2)(P_2)) * (half)0.27667))
+     + 
+      (_MainTex.sample(_mtlsmp__MainTex, (float2)(P_4)) * (half)0.27667)
+    ) + (_MainTex.sample(_mtlsmp__MainTex, (float2)(P_5)) * (half)0.08074)) + (_MainTex.sample(_mtlsmp__MainTex, (float2)(P_6)) * (half)0.08074)) + (_MainTex.sample(_mtlsmp__MainTex, (float2)(P_7)) * (half)-0.02612))
+   + 
+    (_MainTex.sample(_mtlsmp__MainTex, (float2)(P_8)) * (half)-0.02612)
+  ) + (_MainTex.sample(_mtlsmp__MainTex, (float2)(P_9)) * (half)-0.02143)) + (_MainTex.sample(_mtlsmp__MainTex, (float2)(P_10)) * (half)-0.02143)).xyz;
   col_1.w = half(1.0);
   _mtl_o._glesFragData_0 = col_1;
   return _mtl_o;

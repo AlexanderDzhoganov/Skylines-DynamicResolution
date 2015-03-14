@@ -50,6 +50,7 @@ public class CameraHook : MonoBehaviour
         }
 
         ssaaFactor = config.ssaaFactor;
+        userSSAAFactor = ssaaFactor;
         currentSSAAFactor = ssaaFactor;
         SaveConfig();
     }
@@ -83,10 +84,11 @@ public class CameraHook : MonoBehaviour
     {
         var width = Screen.width * factor;
         var height = Screen.height * factor;
-        rt = new RenderTexture((int)width, (int)height, 24, RenderTextureFormat.Default);
+        rt = new RenderTexture((int)width, (int)height, 24, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
 
         var hook = dummyGameObject.GetComponent<DummyHook>();
         hook.rt = rt;
+        hook.rt2 = new RenderTexture(Screen.width, (int)height, 0);
         hook.mainCamera.targetTexture = rt;
 
         initialized = true;
@@ -102,43 +104,52 @@ public class CameraHook : MonoBehaviour
     {
     }
 
+    public void Initialize()
+    {
+        SetInGameAA(false);
+
+        var camera = gameObject.GetComponent<Camera>();
+        cameraPixelRect = camera.pixelRect;
+        camera.depth = -100;
+        camera.enabled = false;
+
+        var width = Screen.width * ssaaFactor;
+        var height = Screen.height * ssaaFactor;
+        rt = new RenderTexture((int)width, (int)height, 24, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+
+        dummyGameObject = new GameObject();
+        var dummy = dummyGameObject.AddComponent<Camera>();
+        dummy.cullingMask = 0;
+        dummy.depth = -3;
+        dummy.tag = "MainCamera";
+        dummy.pixelRect = cameraPixelRect;
+
+        dummyHook = dummyGameObject.AddComponent<DummyHook>();
+        dummyHook.rt = rt;
+        dummyHook.rt2 = new RenderTexture(Screen.width, (int)height, 0);
+
+        dummyHook.mainCamera = camera;
+        //hook.mainCamera.tag = "Player";
+        dummyHook.hook = this;
+
+        dummyHook.mainCamera.targetTexture = null;
+        dummyHook.mainCamera.pixelRect = cameraPixelRect;
+
+        var underground = FindObjectOfType<UndergroundView>();
+        undergroundCamera = underground.gameObject.GetComponent<Camera>();
+        undergroundCamera.backgroundColor = new Color(0, 0, 0, 1);
+        undergroundCamera.depth = -110;
+
+        initialized = true;
+
+        SaveConfig();
+    }
+
     public void Update()
     {
         if (!initialized)
         {
-            SetInGameAA(false);
-
-            var camera = gameObject.GetComponent<Camera>();
-            cameraPixelRect = camera.pixelRect;
-            camera.depth = -100;
-            camera.enabled = false;
-
-            var width = Screen.width*ssaaFactor;
-            var height = Screen.height*ssaaFactor;
-            rt = new RenderTexture((int) width, (int) height, 24, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
-
-            dummyGameObject = new GameObject();
-            var dummy = dummyGameObject.AddComponent<Camera>();
-            dummy.cullingMask = 0;
-            dummy.depth = -3;
-            dummy.tag = "MainCamera";
-            dummy.pixelRect = cameraPixelRect;
-
-            dummyHook = dummyGameObject.AddComponent<DummyHook>();
-            dummyHook.rt = rt;
-            dummyHook.mainCamera = camera;
-            //hook.mainCamera.tag = "Player";
-            dummyHook.hook = this;
-
-            dummyHook.mainCamera.targetTexture = null;
-            dummyHook.mainCamera.pixelRect = cameraPixelRect;
-
-            var underground = FindObjectOfType<UndergroundView>();
-            undergroundCamera = underground.gameObject.GetComponent<Camera>();
-            undergroundCamera.backgroundColor = new Color(0, 0, 0, 1);
-            undergroundCamera.depth = -110;
-
-            initialized = true;
+            Initialize();
         }
 
         if (undergroundCamera.cullingMask != 0)
@@ -201,7 +212,7 @@ public class CameraHook : MonoBehaviour
         GUILayout.EndHorizontal();
 
         GUILayout.Label("FPS: " + 1.0f / Time.deltaTime);
-        GUILayout.Label("dT: " + Time.deltaTime.ToString("0.00"));
+        GUILayout.Label("dT: " + Time.deltaTime.ToString("0.000"));
 
         GUILayout.BeginHorizontal();
         GUILayout.FlexibleSpace();
