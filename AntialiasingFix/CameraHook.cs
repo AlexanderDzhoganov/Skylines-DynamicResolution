@@ -1,5 +1,6 @@
 ﻿using System;
 using System.CodeDom;
+using System.Runtime.InteropServices;
 using System.Xml.Schema;
 using DynamicResolution;
 using UnityEngine;
@@ -89,6 +90,7 @@ public class CameraHook : MonoBehaviour
         var hook = dummyGameObject.GetComponent<DummyHook>();
         hook.rt = rt;
         hook.rt2 = new RenderTexture(Screen.width, (int)height, 0);
+
         hook.mainCamera.targetTexture = rt;
 
         initialized = true;
@@ -127,6 +129,7 @@ public class CameraHook : MonoBehaviour
         dummyHook = dummyGameObject.AddComponent<DummyHook>();
         dummyHook.rt = rt;
         dummyHook.rt2 = new RenderTexture(Screen.width, (int)height, 0);
+        dummyHook.fxaaRt = null;
 
         dummyHook.mainCamera = camera;
         //hook.mainCamera.tag = "Player";
@@ -204,13 +207,48 @@ public class CameraHook : MonoBehaviour
         var height = cameraPixelRect.height * ssaaFactor;
 
         GUILayout.Label(String.Format("Internal resolution: {0}x{1}", (int)width, (int)height));
-
         GUILayout.BeginHorizontal();
-        ssaaFactor = GUILayout.HorizontalSlider(ssaaFactor, 0.25f, 2.5f, GUILayout.Width(256));
+      
+        ssaaFactor = GUILayout.HorizontalSlider(ssaaFactor, 0.25f, 3.0f, GUILayout.Width(256));
+        if (ssaaFactor <= 0.25f)
+        {
+            ssaaFactor = 0.25f;
+        }
+        else if (ssaaFactor <= 0.50f)
+        {
+            ssaaFactor = 0.50f;
+        }
+        else if (ssaaFactor <= 0.75f)
+        {
+            ssaaFactor = 0.75f;
+        }
+        else if (ssaaFactor <= 1.0f)
+        {
+            ssaaFactor = 1.0f;
+        }
+        else if (ssaaFactor <= 1.5f)
+        {
+            ssaaFactor = 1.5f;
+        }
+        else if (ssaaFactor <= 1.75f)
+        {
+            ssaaFactor = 1.75f;
+        }
+        else if (ssaaFactor <= 2.0f)
+        {
+            ssaaFactor = 2.0f;
+        }
+        else if (ssaaFactor <= 2.5f)
+        {
+            ssaaFactor = 2.5f;
+        }
+        else if (ssaaFactor <= 3.0f)
+        {
+            ssaaFactor = 3.0f;
+        }
 
         GUILayout.Label(String.Format("{0} %", (int)(ssaaFactor * 100.0f)));
         GUILayout.EndHorizontal();
-
         GUILayout.Label("FPS: " + 1.0f / Time.deltaTime);
         GUILayout.Label("dT: " + Time.deltaTime.ToString("0.000"));
 

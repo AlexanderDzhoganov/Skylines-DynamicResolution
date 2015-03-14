@@ -59,6 +59,9 @@
   <PropertyGroup>
     <PostBuildEvent>copy DynamicResolution.dll "C:\Program Files (x86)\Steam\steamapps\workshop\content\255710\406629464"</PostBuildEvent>
   </PropertyGroup>
+  <PropertyGroup>
+    <PreBuildEvent>del "C:\Program Files (x86)\Steam\steamapps\workshop\content\255710\406629464\DynamicResolution.dll"</PreBuildEvent>
+  </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">
