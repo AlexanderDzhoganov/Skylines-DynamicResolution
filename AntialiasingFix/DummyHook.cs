@@ -30,6 +30,15 @@ namespace DynamicResolution
 
             tiltShift = FindObjectOfType<TiltShiftEffect>();
         }
+        public void Update()
+        {
+            camera.fieldOfView = mainCamera.fieldOfView;
+            camera.nearClipPlane = mainCamera.nearClipPlane;
+            camera.farClipPlane = mainCamera.farClipPlane;
+            camera.transform.position = mainCamera.transform.position;
+            camera.transform.rotation = mainCamera.transform.rotation;
+            camera.rect = mainCamera.rect;
+        }
 
         public void OnRenderImage(RenderTexture src, RenderTexture dst)
         {
