@@ -202,45 +202,61 @@ public class CameraHook : MonoBehaviour
         GUILayout.BeginHorizontal();
       
         ssaaFactor = GUILayout.HorizontalSlider(ssaaFactor, 0.25f, 3.0f, GUILayout.Width(256));
-        if (ssaaFactor <= 0.25f)
-        {
-            ssaaFactor = 0.25f;
-        }
-        else if (ssaaFactor <= 0.50f)
-        {
-            ssaaFactor = 0.50f;
-        }
-        else if (ssaaFactor <= 0.75f)
-        {
-            ssaaFactor = 0.75f;
-        }
-        else if (ssaaFactor <= 1.0f)
-        {
-            ssaaFactor = 1.0f;
-        }
-        else if (ssaaFactor <= 1.5f)
-        {
-            ssaaFactor = 1.5f;
-        }
-        else if (ssaaFactor <= 1.75f)
-        {
-            ssaaFactor = 1.75f;
-        }
-        else if (ssaaFactor <= 2.0f)
-        {
-            ssaaFactor = 2.0f;
-        }
-        else if (ssaaFactor <= 2.5f)
-        {
-            ssaaFactor = 2.5f;
-        }
-        else if (ssaaFactor <= 3.0f)
-        {
-            ssaaFactor = 3.0f;
-        }
 
+        if (!config.unlockSlider)
+        {
+            if (ssaaFactor <= 0.25f)
+            {
+                ssaaFactor = 0.25f;
+            }
+            else if (ssaaFactor <= 0.50f)
+            {
+                ssaaFactor = 0.50f;
+            }
+            else if (ssaaFactor <= 0.75f)
+            {
+                ssaaFactor = 0.75f;
+            }
+            else if (ssaaFactor <= 1.0f)
+            {
+                ssaaFactor = 1.0f;
+            }
+            else if (ssaaFactor <= 1.5f)
+            {
+                ssaaFactor = 1.5f;
+            }
+            else if (ssaaFactor <= 1.75f)
+            {
+                ssaaFactor = 1.75f;
+            }
+            else if (ssaaFactor <= 2.0f)
+            {
+                ssaaFactor = 2.0f;
+            }
+            else if (ssaaFactor <= 2.5f)
+            {
+                ssaaFactor = 2.5f;
+            }
+            else if (ssaaFactor <= 3.0f)
+            {
+                ssaaFactor = 3.0f;
+            }
+        }
+        
         GUILayout.Label(String.Format("{0} %", (int)(ssaaFactor * 100.0f)));
         GUILayout.EndHorizontal();
+
+        GUILayout.BeginHorizontal();
+
+        GUILayout.Label("Unlock slider (may degrade quality)");
+        var unlockSlider = GUILayout.Toggle(config.unlockSlider, "");
+        GUILayout.EndHorizontal();
+
+        if (unlockSlider != config.unlockSlider)
+        {
+            config.unlockSlider = unlockSlider;
+            SaveConfig();
+        }
 
         GUILayout.Label("FPS: " + 1.0f / Time.deltaTime);
         GUILayout.Label("dT: " + Time.deltaTime.ToString("0.000"));
