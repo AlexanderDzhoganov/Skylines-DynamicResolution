@@ -8,7 +8,6 @@ namespace DynamicResolution
 
         public RenderTexture rt;
         public RenderTexture rt2;
-        public RenderTexture fxaaRt;
 
         public RenderTexture tempRT;
 

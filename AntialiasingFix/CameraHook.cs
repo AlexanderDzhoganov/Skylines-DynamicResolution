@@ -129,7 +129,6 @@ public class CameraHook : MonoBehaviour
         dummyHook = dummyGameObject.AddComponent<DummyHook>();
         dummyHook.rt = rt;
         dummyHook.rt2 = new RenderTexture(Screen.width, (int)height, 0);
-        dummyHook.fxaaRt = null;
 
         dummyHook.mainCamera = camera;
         //hook.mainCamera.tag = "Player";
