@@ -93,12 +93,15 @@ public class CameraHook : MonoBehaviour
     {
         var width = Screen.width * factor;
         var height = Screen.height * factor;
+
+        Destroy(rt);
         rt = new RenderTexture((int)width, (int)height, 24, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
 
         var hook = dummyGameObject.GetComponent<DummyHook>();
         hook.rt = rt;
         hook.rt2 = new RenderTexture(Screen.width, (int)height, 0);
 
+        Destroy(hook.mainCamera.targetTexture);
         hook.mainCamera.targetTexture = rt;
 
         initialized = true;

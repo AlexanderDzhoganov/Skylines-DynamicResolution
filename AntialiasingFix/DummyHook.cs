@@ -47,8 +47,8 @@ namespace DynamicResolution
                 return;
             }
 
-            tiltShift.m_BlurArea *= hook.currentSSAAFactor;
-            tiltShift.m_MaxBlurSize *= hook.currentSSAAFactor;
+           // tiltShift.m_BlurArea *= hook.currentSSAAFactor;
+           // tiltShift.m_MaxBlurSize *= hook.currentSSAAFactor;
 
             mainCamera.targetTexture = rt;
             mainCamera.Render();
