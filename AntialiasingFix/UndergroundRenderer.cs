@@ -1,4 +1,5 @@
 ﻿using ColossalFramework;
+using ColossalFramework.Steamworks;
 using UnityEngine;
 
 namespace DynamicResolution
@@ -6,7 +7,6 @@ namespace DynamicResolution
     public class UndergroundRenderer : MonoBehaviour
     {
 
-        private RenderTexture undergroundRgbd;
         private Camera undergroundCamera;
         private Camera mainCamera;
         private CameraHook cameraHook;
@@ -15,6 +15,8 @@ namespace DynamicResolution
         private Material m_overlayMaterial;
         private int ID_UndergroundTexture;
         private int ID_UndergroundUVScale;
+
+        public RenderTexture rt;
 
         void Awake()
         {
@@ -33,22 +35,16 @@ namespace DynamicResolution
 
         void OnPostRender()
         {
-            if (undergroundRgbd != null)
-            {
-                RenderTexture.ReleaseTemporary(undergroundRgbd);
-            }
-
             if (undergroundCamera.cullingMask != 0)
             {
-                undergroundRgbd = RenderTexture.GetTemporary(cameraHook.internalWidth, cameraHook.internalHeight, 24, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
                 undergroundCamera.fieldOfView = mainCamera.fieldOfView;
                 undergroundCamera.nearClipPlane = mainCamera.nearClipPlane;
                 undergroundCamera.farClipPlane = mainCamera.farClipPlane;
                 undergroundCamera.rect = new Rect(0, 0, 1, 1);
-                undergroundCamera.targetTexture = undergroundRgbd;
+                undergroundCamera.targetTexture = rt;
                 undergroundCamera.enabled = true;
 
-                if (undergroundRgbd != null && Application.isPlaying && Singleton<LoadingManager>.instance.m_loadingComplete)
+                if (rt != null && Application.isPlaying && Singleton<LoadingManager>.instance.m_loadingComplete)
                 {
                     RenderManager.Managers_UndergroundOverlay(Singleton<RenderManager>.instance.CurrentCameraInfo);
                 }
@@ -59,16 +55,10 @@ namespace DynamicResolution
         {
             if (undergroundCamera.cullingMask != 0)
             {
-                m_overlayMaterial.SetTexture(ID_UndergroundTexture, undergroundRgbd);
+                m_overlayMaterial.SetTexture(ID_UndergroundTexture, rt);
                 m_overlayMaterial.SetVector(this.ID_UndergroundUVScale, Vector4.one);
                 
                 Graphics.Blit(src, dst, m_overlayMaterial);
-
-                if (undergroundRgbd != null)
-                {
-                    RenderTexture.ReleaseTemporary(undergroundRgbd);
-                    undergroundRgbd = null;
-                }
             }
             else
             {

@@ -34,6 +34,8 @@ public class CameraHook : MonoBehaviour
     private Texture2D bgTexture;
     private GUISkin skin;
 
+    private UndergroundRenderer undergroundRenderer;
+
     public float GetSSAAFactor()
     {
         if (undergroundCamera.cullingMask != 0)
@@ -122,6 +124,9 @@ public class CameraHook : MonoBehaviour
         Destroy(hook.mainCamera.targetTexture);
         hook.mainCamera.targetTexture = rt;
 
+        Destroy(undergroundRenderer.rt);
+        undergroundRenderer.rt = new RenderTexture(internalWidth, internalHeight, 24, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+
         initialized = true;
 
         currentSSAAFactor = factor;
@@ -164,7 +169,8 @@ public class CameraHook : MonoBehaviour
         undergroundCamera.depth = -110;
         underground.enabled = false;
 
-        gameObject.AddComponent<UndergroundRenderer>();
+        undergroundRenderer = gameObject.AddComponent<UndergroundRenderer>();
+        undergroundRenderer.rt = new RenderTexture(internalWidth, internalHeight, 24, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
 
         initialized = true;
 
