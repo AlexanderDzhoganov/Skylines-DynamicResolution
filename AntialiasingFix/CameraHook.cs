@@ -36,6 +36,8 @@ public class CameraHook : MonoBehaviour
 
     private UndergroundRenderer undergroundRenderer;
 
+    private Component ulysiusSSAOComponent = null;
+
     public float GetSSAAFactor()
     {
         if (undergroundCamera.cullingMask != 0)
@@ -171,6 +173,20 @@ public class CameraHook : MonoBehaviour
 
         undergroundRenderer = gameObject.AddComponent<UndergroundRenderer>();
         undergroundRenderer.rt = new RenderTexture(internalWidth, internalHeight, 24, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+
+        ulysiusSSAOComponent = GetComponent("AmbientOcclusion.ScreenSpaceAmbientOcclusion");
+        if (ulysiusSSAOComponent != null)
+        {
+            windowRect.height += 24;
+            if (config.ssaoState)
+            {
+                ulysiusSSAOComponent.SendMessage("Enable");
+            }
+            else
+            {
+                ulysiusSSAOComponent.SendMessage("Disable");
+            }
+        }
 
         initialized = true;
 
@@ -323,6 +339,28 @@ public class CameraHook : MonoBehaviour
         {
             config.unlockSlider = unlockSlider;
             SaveConfig();
+        }
+
+        if (ulysiusSSAOComponent != null)
+        {
+            var oldSSAO = config.ssaoState;
+            
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Ambient Occlusion (by Ulysius)");
+            config.ssaoState = GUILayout.Toggle(config.ssaoState, "");
+            GUILayout.EndHorizontal();
+
+            if (config.ssaoState != oldSSAO)
+            {
+                if (config.ssaoState)
+                {
+                    ulysiusSSAOComponent.SendMessage("Enable");
+                }
+                else
+                {
+                    ulysiusSSAOComponent.SendMessage("Disable");
+                }
+            }
         }
 
         GUILayout.Label("FPS: " + 1.0f / Time.deltaTime);

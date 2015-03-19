@@ -9,10 +9,10 @@ namespace DynamicResolution
 
         private Camera undergroundCamera;
         private Camera mainCamera;
-        private CameraHook cameraHook;
         private Material overlayMaterial;
+        private Material metroOverlayMaterial;
+        private OverlayEffect overlayEffect;
 
-        private Material m_overlayMaterial;
         private int ID_UndergroundTexture;
         private int ID_UndergroundUVScale;
 
@@ -26,9 +26,10 @@ namespace DynamicResolution
             var undergroundView = FindObjectOfType<UndergroundView>();
             undergroundCamera = undergroundView.GetComponent<Camera>();
 
-            cameraHook = FindObjectOfType<CameraHook>();
+            overlayEffect = FindObjectOfType<OverlayEffect>();
 
-            m_overlayMaterial = new Material(undergroundShader);
+            overlayMaterial = new Material(undergroundShader);
+            metroOverlayMaterial = new Material(overlayEffect.m_overlayShader);
             ID_UndergroundTexture = Shader.PropertyToID("_UndergroundTexture");
             ID_UndergroundUVScale = Shader.PropertyToID("_UndergroundUVScale");
         }
@@ -53,12 +54,19 @@ namespace DynamicResolution
 
         void OnRenderImage(RenderTexture src, RenderTexture dst)
         {
-            if (undergroundCamera.cullingMask != 0)
+            if (undergroundCamera.cullingMask == 8192)
             {
-                m_overlayMaterial.SetTexture(ID_UndergroundTexture, rt);
-                m_overlayMaterial.SetVector(this.ID_UndergroundUVScale, Vector4.one);
-                
-                Graphics.Blit(src, dst, m_overlayMaterial);
+                overlayMaterial.SetTexture(ID_UndergroundTexture, rt);
+                overlayMaterial.SetVector(this.ID_UndergroundUVScale, Vector4.one);
+
+                Graphics.Blit(src, dst, overlayMaterial);
+            }
+            else if (undergroundCamera.cullingMask == 16384)
+            {
+                metroOverlayMaterial.SetTexture(ID_UndergroundTexture, rt);
+                metroOverlayMaterial.SetVector(this.ID_UndergroundUVScale, Vector4.one);
+                metroOverlayMaterial.EnableKeyword("UNDERGROUND_ON");
+                Graphics.Blit(src, dst, metroOverlayMaterial);
             }
             else
             {
