@@ -47,7 +47,7 @@ namespace DynamicResolution
 
                 if (rt != null && Application.isPlaying && Singleton<LoadingManager>.instance.m_loadingComplete)
                 {
-                    RenderManager.Managers_UndergroundOverlay(Singleton<RenderManager>.instance.CurrentCameraInfo);
+                    
                 }
             }
         }
@@ -60,6 +60,10 @@ namespace DynamicResolution
                 overlayMaterial.SetVector(this.ID_UndergroundUVScale, Vector4.one);
 
                 Graphics.Blit(src, dst, overlayMaterial);
+
+                Graphics.SetRenderTarget(dst.colorBuffer, Graphics.activeDepthBuffer);
+                RenderManager.Managers_UndergroundOverlay(Singleton<RenderManager>.instance.CurrentCameraInfo);
+                Graphics.SetRenderTarget(null);
             }
             else if (undergroundCamera.cullingMask == 16384)
             {
@@ -67,6 +71,10 @@ namespace DynamicResolution
                 metroOverlayMaterial.SetVector(this.ID_UndergroundUVScale, Vector4.one);
                 metroOverlayMaterial.EnableKeyword("UNDERGROUND_ON");
                 Graphics.Blit(src, dst, metroOverlayMaterial);
+
+                Graphics.SetRenderTarget(dst.colorBuffer, Graphics.activeDepthBuffer);
+                RenderManager.Managers_UndergroundOverlay(Singleton<RenderManager>.instance.CurrentCameraInfo);
+                Graphics.SetRenderTarget(null);
             }
             else
             {

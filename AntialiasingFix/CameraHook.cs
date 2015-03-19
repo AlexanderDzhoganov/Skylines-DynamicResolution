@@ -126,8 +126,8 @@ public class CameraHook : MonoBehaviour
         Destroy(hook.mainCamera.targetTexture);
         hook.mainCamera.targetTexture = rt;
 
-        Destroy(undergroundRenderer.rt);
-        undergroundRenderer.rt = new RenderTexture(internalWidth, internalHeight, 24, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+       // Destroy(undergroundRenderer.rt);
+       // undergroundRenderer.rt = new RenderTexture(internalWidth, internalHeight, 24, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
 
         initialized = true;
 
@@ -169,10 +169,10 @@ public class CameraHook : MonoBehaviour
         undergroundCamera = underground.gameObject.GetComponent<Camera>();
         undergroundCamera.backgroundColor = new Color(0, 0, 0, 1);
         undergroundCamera.depth = -110;
-        underground.enabled = false;
+       // underground.enabled = false;
 
-        undergroundRenderer = gameObject.AddComponent<UndergroundRenderer>();
-        undergroundRenderer.rt = new RenderTexture(internalWidth, internalHeight, 24, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+        //undergroundRenderer = gameObject.AddComponent<UndergroundRenderer>();
+        //undergroundRenderer.rt = new RenderTexture(internalWidth, internalHeight, 24, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
 
         ulysiusSSAOComponent = GetComponent("AmbientOcclusion.ScreenSpaceAmbientOcclusion");
         if (ulysiusSSAOComponent != null)
@@ -200,7 +200,7 @@ public class CameraHook : MonoBehaviour
             Initialize();
         }
 
-      /*  if (undergroundCamera.cullingMask != 0)
+        if (undergroundCamera.cullingMask != 0)
         {
             if (ssaaFactor != 1.0f)
             {
@@ -219,7 +219,7 @@ public class CameraHook : MonoBehaviour
             }
         }
         
-*/        if (Input.GetKey(KeyCode.RightControl) && Input.GetKeyDown(KeyCode.F10))
+        if (Input.GetKey(KeyCode.RightControl) && Input.GetKeyDown(KeyCode.F10))
         {
             if (ssaaFactor == 1.0f)
             {
