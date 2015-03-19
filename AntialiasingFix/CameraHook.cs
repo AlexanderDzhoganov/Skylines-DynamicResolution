@@ -89,6 +89,24 @@ public class CameraHook : MonoBehaviour
         }
     }
 
+    public int width
+    {
+        get { return (int)(Screen.width * ssaaFactor); }
+    }
+    public int height
+    {
+        get { return (int)(Screen.height * ssaaFactor); }
+    }
+
+    public int internalWidth
+    {
+        get { return (int)(cameraPixelRect.width * ssaaFactor); }
+    }
+    public int internalHeight
+    {
+        get { return (int)(cameraPixelRect.height * ssaaFactor); }
+    }
+
     public void SetSSAAFactor(float factor)
     {
         var width = Screen.width * factor;
@@ -144,6 +162,9 @@ public class CameraHook : MonoBehaviour
         undergroundCamera = underground.gameObject.GetComponent<Camera>();
         undergroundCamera.backgroundColor = new Color(0, 0, 0, 1);
         undergroundCamera.depth = -110;
+        underground.enabled = false;
+
+        gameObject.AddComponent<UndergroundRenderer>();
 
         initialized = true;
 
@@ -157,7 +178,7 @@ public class CameraHook : MonoBehaviour
             Initialize();
         }
 
-        if (undergroundCamera.cullingMask != 0)
+      /*  if (undergroundCamera.cullingMask != 0)
         {
             if (ssaaFactor != 1.0f)
             {
@@ -176,7 +197,7 @@ public class CameraHook : MonoBehaviour
             }
         }
         
-        if (Input.GetKey(KeyCode.RightControl) && Input.GetKeyDown(KeyCode.F10))
+*/        if (Input.GetKey(KeyCode.RightControl) && Input.GetKeyDown(KeyCode.F10))
         {
             if (ssaaFactor == 1.0f)
             {
