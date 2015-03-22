@@ -34,9 +34,12 @@ public class CameraHook : MonoBehaviour
     private Texture2D bgTexture;
     private GUISkin skin;
 
-    private UndergroundRenderer undergroundRenderer;
-
     private Component ulysiusSSAOComponent = null;
+
+    void OnDestroy()
+    {
+        Destroy(dummyGameObject);
+    }
 
     public float GetSSAAFactor()
     {

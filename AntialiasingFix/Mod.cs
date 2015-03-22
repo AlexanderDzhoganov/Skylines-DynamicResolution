@@ -23,6 +23,8 @@ namespace DynamicResolution
     public class ModLoad : LoadingExtensionBase
     {
 
+        private CameraHook hook;
+
         public override void OnLevelLoaded(LoadMode mode)
         {
             if (mode != LoadMode.NewGame && mode != LoadMode.LoadGame)
@@ -31,10 +33,13 @@ namespace DynamicResolution
             }
 
             var cameraController = GameObject.FindObjectOfType<CameraController>();
-            var camera = cameraController.gameObject.GetComponent<Camera>();
-            camera.gameObject.AddComponent<CameraHook>();
+            hook = cameraController.gameObject.AddComponent<CameraHook>();
         }
 
+        public override void OnLevelUnloading()
+        {
+            GameObject.Destroy(hook);
+        }
     }
 
 }
