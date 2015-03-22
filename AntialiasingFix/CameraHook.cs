@@ -36,8 +36,12 @@ public class CameraHook : MonoBehaviour
 
     private Component ulysiusSSAOComponent = null;
 
+    private float originalDepth;
+
     void OnDestroy()
     {
+        GetComponent<Camera>().depth = originalDepth;
+        GetComponent<Camera>().enabled = true;
         Destroy(dummyGameObject);
     }
 
@@ -143,6 +147,7 @@ public class CameraHook : MonoBehaviour
 
         var camera = gameObject.GetComponent<Camera>();
         cameraPixelRect = camera.pixelRect;
+        originalDepth = camera.depth;
         camera.depth = -100;
         camera.enabled = false;
 
