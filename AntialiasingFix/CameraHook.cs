@@ -162,9 +162,10 @@ public class CameraHook : MonoBehaviour
         frameCount++;
         dtAccum += Time.deltaTime;
 
-        if (frameCount >= 60)
+        if (frameCount >= 20)
         {
             fps = dtAccum * frameCount;
+            dtAccum = 0.0f;
             frameCount = 0;
         }
 
