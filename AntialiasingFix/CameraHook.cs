@@ -1,27 +1,23 @@
 ﻿using System;
-using ColossalFramework;
 using DynamicResolution;
 using UnityEngine;
 
 public class CameraHook : MonoBehaviour
 {
 
+    public static CameraHook instance = null;
+
     private RenderTexture rt;
 
-    public float ssaaFactor = 1.0f;
     public float userSSAAFactor = 1.0f;
     public float currentSSAAFactor = 1.0f;
-
-    public bool resetFactor = false;
 
     private bool initialized = false;
 
     public Rect cameraPixelRect;
 
     private GameObject dummyGameObject;
-    private DummyHook dummyHook;
-
-    private Camera undergroundCamera;
+    private CameraRenderer cameraRenderer;
 
     public bool showConfigWindow = false;
     private Rect windowRect = new Rect(64, 64, 350, 170);
@@ -34,38 +30,27 @@ public class CameraHook : MonoBehaviour
     private Texture2D bgTexture;
     private GUISkin skin;
 
-    private Component ulysiusSSAOComponent = null;
-
-    private float originalDepth;
+    private float dtAccum = 0.0f;
+    private int frameCount = 0;
+    private float fps = 0.0f;
 
     void OnDestroy()
     {
-        GetComponent<Camera>().depth = originalDepth;
         GetComponent<Camera>().enabled = true;
         Destroy(dummyGameObject);
     }
 
-    public float GetSSAAFactor()
-    {
-        if (undergroundCamera.cullingMask != 0)
-        {
-            return 1.0f;
-        }
-
-        return currentSSAAFactor;
-    }
-
     public void Awake()
     {
+        instance = this;
+
         config = Configuration.Deserialize(configPath);
         if (config == null)
         {
             config = new Configuration();
         }
 
-        ssaaFactor = config.ssaaFactor;
-        userSSAAFactor = ssaaFactor;
-        currentSSAAFactor = ssaaFactor;
+        currentSSAAFactor = userSSAAFactor = config.ssaaFactor;
         SaveConfig();
 
         cameraController = FindObjectOfType<CameraController>();
@@ -102,20 +87,20 @@ public class CameraHook : MonoBehaviour
 
     public int width
     {
-        get { return (int)(Screen.width * ssaaFactor); }
+        get { return (int)(Screen.width * currentSSAAFactor); }
     }
     public int height
     {
-        get { return (int)(Screen.height * ssaaFactor); }
+        get { return (int)(Screen.height * currentSSAAFactor); }
     }
 
     public int internalWidth
     {
-        get { return (int)(cameraPixelRect.width * ssaaFactor); }
+        get { return (int)(cameraPixelRect.width * currentSSAAFactor); }
     }
     public int internalHeight
     {
-        get { return (int)(cameraPixelRect.height * ssaaFactor); }
+        get { return (int)(cameraPixelRect.height * currentSSAAFactor); }
     }
 
     public void SetSSAAFactor(float factor)
@@ -126,19 +111,16 @@ public class CameraHook : MonoBehaviour
         Destroy(rt);
         rt = new RenderTexture((int)width, (int)height, 24, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
 
-        var hook = dummyGameObject.GetComponent<DummyHook>();
-        hook.rt = rt;
-        hook.rt2 = new RenderTexture(Screen.width, (int)height, 0);
+        var hook = dummyGameObject.GetComponent<CameraRenderer>();
+        hook.fullResRT = rt;
+        hook.halfVerticalResRT = new RenderTexture(Screen.width, (int)height, 0);
 
-        Destroy(hook.mainCamera.targetTexture);
-        hook.mainCamera.targetTexture = rt;
-
-       // Destroy(undergroundRenderer.rt);
-       // undergroundRenderer.rt = new RenderTexture(internalWidth, internalHeight, 24, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
-
-        initialized = true;
+        Destroy(CameraRenderer.mainCamera.targetTexture);
+        CameraRenderer.mainCamera.targetTexture = rt;
 
         currentSSAAFactor = factor;
+
+        initialized = true;
     }
 
     public void Initialize()
@@ -147,12 +129,10 @@ public class CameraHook : MonoBehaviour
 
         var camera = gameObject.GetComponent<Camera>();
         cameraPixelRect = camera.pixelRect;
-        originalDepth = camera.depth;
-        camera.depth = -100;
         camera.enabled = false;
 
-        var width = Screen.width * ssaaFactor;
-        var height = Screen.height * ssaaFactor;
+        var width = Screen.width * userSSAAFactor;
+        var height = Screen.height * userSSAAFactor;
         rt = new RenderTexture((int)width, (int)height, 24, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
 
         dummyGameObject = new GameObject();
@@ -162,40 +142,16 @@ public class CameraHook : MonoBehaviour
         dummy.tag = "MainCamera";
         dummy.pixelRect = cameraPixelRect;
 
-        dummyHook = dummyGameObject.AddComponent<DummyHook>();
-        dummyHook.rt = rt;
-        dummyHook.rt2 = new RenderTexture(Screen.width, (int)height, 0);
+        cameraRenderer = dummyGameObject.AddComponent<CameraRenderer>();
+        cameraRenderer.fullResRT = rt;
+        cameraRenderer.halfVerticalResRT = new RenderTexture(Screen.width, (int)height, 0);
 
-        dummyHook.mainCamera = camera;
-        //hook.mainCamera.tag = "Player";
-        dummyHook.hook = this;
+        CameraRenderer.mainCamera = camera;
 
-        dummyHook.mainCamera.targetTexture = null;
-        dummyHook.mainCamera.pixelRect = cameraPixelRect;
+        CameraRenderer.mainCamera.targetTexture = null;
+        CameraRenderer.mainCamera.pixelRect = cameraPixelRect;
 
-        var underground = FindObjectOfType<UndergroundView>();
-        undergroundCamera = underground.gameObject.GetComponent<Camera>();
-        undergroundCamera.backgroundColor = new Color(0, 0, 0, 1);
-        undergroundCamera.depth = -110;
-       // underground.enabled = false;
-
-        //undergroundRenderer = gameObject.AddComponent<UndergroundRenderer>();
-        //undergroundRenderer.rt = new RenderTexture(internalWidth, internalHeight, 24, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
-
-        ulysiusSSAOComponent = GetComponent("AmbientOcclusion.ScreenSpaceAmbientOcclusion");
-        if (ulysiusSSAOComponent != null)
-        {
-            windowRect.height += 24;
-            if (config.ssaoState)
-            {
-                ulysiusSSAOComponent.SendMessage("Enable");
-            }
-            else
-            {
-                ulysiusSSAOComponent.SendMessage("Disable");
-            }
-        }
-
+        currentSSAAFactor = userSSAAFactor;
         initialized = true;
 
         SaveConfig();
@@ -203,44 +159,21 @@ public class CameraHook : MonoBehaviour
 
     void Update()
     {
+        frameCount++;
+        dtAccum += Time.deltaTime;
+
+        if (frameCount >= 60)
+        {
+            fps = dtAccum * frameCount;
+            frameCount = 0;
+        }
+
         if (!initialized)
         {
             Initialize();
         }
-
-        if (undergroundCamera.cullingMask != 0)
-        {
-            if (ssaaFactor != 1.0f)
-            {
-                SetSSAAFactor(1.0f);
-                ssaaFactor = 1.0f;
-                resetFactor = true;
-            }
-        }
-        else if(undergroundCamera.cullingMask == 0)
-        {
-            if (ssaaFactor != userSSAAFactor && resetFactor)
-            {
-                SetSSAAFactor(userSSAAFactor);
-                ssaaFactor = userSSAAFactor;
-                resetFactor = false;
-            }
-        }
-        
-        if (Input.GetKey(KeyCode.RightControl) && Input.GetKeyDown(KeyCode.F10))
-        {
-            if (ssaaFactor == 1.0f)
-            {
-                SetSSAAFactor(userSSAAFactor);
-                ssaaFactor = userSSAAFactor;
-            }
-            else
-            {
-                SetSSAAFactor(1.0f);
-                ssaaFactor = 1.0f;
-            }
-        }
-        else if (Input.GetKeyDown(KeyCode.F10))
+       
+        if (Input.GetKeyDown(KeyCode.F10) || (Input.GetKey(KeyCode.LeftControl) && Input.GetKeyDown(KeyCode.R)))
         {
             showConfigWindow = !showConfigWindow;
         }
@@ -286,55 +219,55 @@ public class CameraHook : MonoBehaviour
 
     void DoConfigWindow(int wnd)
     {
-        var width = cameraPixelRect.width * ssaaFactor;
-        var height = cameraPixelRect.height * ssaaFactor;
+        var width = cameraPixelRect.width * userSSAAFactor;
+        var height = cameraPixelRect.height * userSSAAFactor;
 
         GUILayout.Label(String.Format("Internal resolution: {0}x{1}", (int)width, (int)height));
         GUILayout.BeginHorizontal();
-      
-        ssaaFactor = GUILayout.HorizontalSlider(ssaaFactor, 0.25f, 3.0f, GUILayout.Width(256));
+
+        userSSAAFactor = GUILayout.HorizontalSlider(userSSAAFactor, 0.25f, 3.0f, GUILayout.Width(256));
 
         if (!config.unlockSlider)
         {
-            if (ssaaFactor <= 0.25f)
+            if (userSSAAFactor <= 0.25f)
             {
-                ssaaFactor = 0.25f;
+                userSSAAFactor = 0.25f;
             }
-            else if (ssaaFactor <= 0.50f)
+            else if (userSSAAFactor <= 0.50f)
             {
-                ssaaFactor = 0.50f;
+                userSSAAFactor = 0.50f;
             }
-            else if (ssaaFactor <= 0.75f)
+            else if (userSSAAFactor <= 0.75f)
             {
-                ssaaFactor = 0.75f;
+                userSSAAFactor = 0.75f;
             }
-            else if (ssaaFactor <= 1.0f)
+            else if (userSSAAFactor <= 1.0f)
             {
-                ssaaFactor = 1.0f;
+                userSSAAFactor = 1.0f;
             }
-            else if (ssaaFactor <= 1.5f)
+            else if (userSSAAFactor <= 1.5f)
             {
-                ssaaFactor = 1.5f;
+                userSSAAFactor = 1.5f;
             }
-            else if (ssaaFactor <= 1.75f)
+            else if (userSSAAFactor <= 1.75f)
             {
-                ssaaFactor = 1.75f;
+                userSSAAFactor = 1.75f;
             }
-            else if (ssaaFactor <= 2.0f)
+            else if (userSSAAFactor <= 2.0f)
             {
-                ssaaFactor = 2.0f;
+                userSSAAFactor = 2.0f;
             }
-            else if (ssaaFactor <= 2.5f)
+            else if (userSSAAFactor <= 2.5f)
             {
-                ssaaFactor = 2.5f;
+                userSSAAFactor = 2.5f;
             }
-            else if (ssaaFactor <= 3.0f)
+            else if (userSSAAFactor <= 3.0f)
             {
-                ssaaFactor = 3.0f;
+                userSSAAFactor = 3.0f;
             }
         }
-        
-        GUILayout.Label(String.Format("{0} %", (int)(ssaaFactor * 100.0f)));
+
+        GUILayout.Label(String.Format("{0} %", (int)(userSSAAFactor * 100.0f)));
         GUILayout.EndHorizontal();
 
         GUILayout.BeginHorizontal();
@@ -349,30 +282,7 @@ public class CameraHook : MonoBehaviour
             SaveConfig();
         }
 
-        if (ulysiusSSAOComponent != null)
-        {
-            var oldSSAO = config.ssaoState;
-            
-            GUILayout.BeginHorizontal();
-            GUILayout.Label("Ambient Occlusion (by Ulysius)");
-            config.ssaoState = GUILayout.Toggle(config.ssaoState, "");
-            GUILayout.EndHorizontal();
-
-            if (config.ssaoState != oldSSAO)
-            {
-                if (config.ssaoState)
-                {
-                    ulysiusSSAOComponent.SendMessage("Enable");
-                }
-                else
-                {
-                    ulysiusSSAOComponent.SendMessage("Disable");
-                }
-            }
-        }
-
-        GUILayout.Label("FPS: " + 1.0f / Time.deltaTime);
-        GUILayout.Label("dT: " + Time.deltaTime.ToString("0.000"));
+        GUILayout.Label("FPS: " + fps);
 
         GUILayout.BeginHorizontal();
         GUILayout.FlexibleSpace();
@@ -380,15 +290,13 @@ public class CameraHook : MonoBehaviour
         if (GUILayout.Button("Reset"))
         {
             SetSSAAFactor(1.0f);
-            ssaaFactor = 1.0f;
-            userSSAAFactor = ssaaFactor;
+            userSSAAFactor = 1.0f;
             SaveConfig();
         }
 
         if (GUILayout.Button("Apply"))
         {
-            SetSSAAFactor(ssaaFactor);
-            userSSAAFactor = ssaaFactor;
+            SetSSAAFactor(userSSAAFactor);
             SaveConfig();
         }
 

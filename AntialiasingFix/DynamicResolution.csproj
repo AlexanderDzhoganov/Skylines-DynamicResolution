@@ -21,6 +21,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -49,10 +50,10 @@
   <ItemGroup>
     <Compile Include="Config.cs" />
     <Compile Include="CameraHook.cs" />
-    <Compile Include="DummyHook.cs" />
+    <Compile Include="Detours.cs" />
+    <Compile Include="CameraRenderer.cs" />
     <Compile Include="Mod.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="UndergroundRenderer.cs" />
     <Compile Include="Util.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

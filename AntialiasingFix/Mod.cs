@@ -1,5 +1,4 @@
-﻿using System.Reflection;
-using ICities;
+﻿using ICities;
 using UnityEngine;
 
 namespace DynamicResolution
