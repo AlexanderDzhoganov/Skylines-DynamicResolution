@@ -100,7 +100,7 @@ namespace DynamicResolution
             {
                 Material shader = downsampleShader;
 
-                if (factor == 2.0f)
+                if (factor <= 2.0f)
                 {
                     shader = downsampleX2Shader;
                 }
