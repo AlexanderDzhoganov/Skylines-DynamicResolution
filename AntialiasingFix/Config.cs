@@ -10,6 +10,7 @@ namespace DynamicResolution
         public float ssaaFactor = 1.0f;
         public bool unlockSlider = false;
         public bool ssaoState = true;
+        public bool lowerVRAMUsage = false;
 
         public void OnPreSerialize()
         {

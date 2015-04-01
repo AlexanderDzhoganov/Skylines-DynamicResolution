@@ -96,8 +96,9 @@ namespace DynamicResolution
             
             float factor = CameraHook.instance.currentSSAAFactor;
 
-            if (factor != 1.0f)
+            if (factor != 1.0f && halfVerticalResRT != null)
             {
+             
                 Material shader = downsampleShader;
 
                 if (factor <= 2.0f)

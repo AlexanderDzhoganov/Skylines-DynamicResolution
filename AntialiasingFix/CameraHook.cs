@@ -103,7 +103,7 @@ public class CameraHook : MonoBehaviour
         get { return (int)(cameraPixelRect.height * currentSSAAFactor); }
     }
 
-    public void SetSSAAFactor(float factor)
+    public void SetSSAAFactor(float factor, bool lowerVRAMUsage)
     {
         var width = Screen.width * factor;
         var height = Screen.height * factor;
@@ -113,7 +113,20 @@ public class CameraHook : MonoBehaviour
 
         var hook = dummyGameObject.GetComponent<CameraRenderer>();
         hook.fullResRT = rt;
-        hook.halfVerticalResRT = new RenderTexture(Screen.width, (int)height, 0);
+
+        if (hook.halfVerticalResRT != null)
+        {
+            Destroy(hook.halfVerticalResRT);
+        }
+
+        if (!lowerVRAMUsage)
+        {
+            hook.halfVerticalResRT = new RenderTexture(Screen.width, (int)height, 0);
+        }
+        else
+        {
+            hook.halfVerticalResRT = null;
+        }
 
         Destroy(CameraRenderer.mainCamera.targetTexture);
         CameraRenderer.mainCamera.targetTexture = rt;
@@ -272,7 +285,6 @@ public class CameraHook : MonoBehaviour
         GUILayout.EndHorizontal();
 
         GUILayout.BeginHorizontal();
-
         GUILayout.Label("Unlock slider (may degrade quality)");
         var unlockSlider = GUILayout.Toggle(config.unlockSlider, "");
         GUILayout.EndHorizontal();
@@ -283,6 +295,17 @@ public class CameraHook : MonoBehaviour
             SaveConfig();
         }
 
+        GUILayout.BeginHorizontal();
+        GUILayout.Label("Lower VRAM usage (will degrade quality)");
+        var lowerRAMUsage = GUILayout.Toggle(config.lowerVRAMUsage, "");
+        GUILayout.EndHorizontal();
+
+        if (lowerRAMUsage != config.lowerVRAMUsage)
+        {
+            config.lowerVRAMUsage = lowerRAMUsage;
+            SaveConfig();
+        }
+
         GUILayout.Label("FPS: " + fps);
 
         GUILayout.BeginHorizontal();
@@ -290,14 +313,15 @@ public class CameraHook : MonoBehaviour
 
         if (GUILayout.Button("Reset"))
         {
-            SetSSAAFactor(1.0f);
+            config.lowerVRAMUsage = false;
+            SetSSAAFactor(1.0f, config.lowerVRAMUsage);
             userSSAAFactor = 1.0f;
             SaveConfig();
         }
 
         if (GUILayout.Button("Apply"))
         {
-            SetSSAAFactor(userSSAAFactor);
+            SetSSAAFactor(userSSAAFactor, config.lowerVRAMUsage);
             SaveConfig();
         }
 
