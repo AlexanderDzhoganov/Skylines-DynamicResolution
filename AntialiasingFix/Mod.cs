@@ -31,11 +31,6 @@ namespace DynamicResolution
         {
             get
             {
-                if (IsModActive())
-                {
-                    AprilFools.Bootstrap();
-                }
-                
                 return "Dynamic resolution";
             }
         }
@@ -61,23 +56,11 @@ namespace DynamicResolution
 
             var cameraController = GameObject.FindObjectOfType<CameraController>();
             hook = cameraController.gameObject.AddComponent<CameraHook>();
-            if (AprilFools.IsAprilFools())
-            {
-                cameraController.gameObject.AddComponent<AprilFools>();
-            }
         }
 
         public override void OnLevelUnloading()
         {
             GameObject.Destroy(hook);
-            var cameraController = GameObject.FindObjectOfType<CameraController>();
-
-            if (cameraController.gameObject.GetComponent<AprilFools>() != null)
-            {
-                GameObject.Destroy(cameraController.gameObject.GetComponent<AprilFools>());
-            }
-
-            AprilFools.Revert();
         }
     }
 
